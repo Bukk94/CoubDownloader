@@ -27,8 +27,8 @@ in highest available quality in mp4 format.
 9. In 'Response Headers', search for value `remember_token=`
 10. The value after `=` is your Access Token, copy in to this app
 
-![guide](Img/Guide_1.png)
-![guide_2](Img/Guide_2.png)
+![guide](CoubDownloader/Img/Guide_1.png)
+![guide_2](CoubDownloader/Img/Guide_2.png)
 
 ## How to install ffmpeg
 
