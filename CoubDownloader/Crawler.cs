@@ -13,6 +13,17 @@ namespace CoubDownloader
         private string _usersAccessToken;
         private const string LikedCategory = "liked";
         private const string BookmarksCategory = "bookmarks";
+
+        private const string DataFormat =
+            "{0}\n" +
+            "\tTitle: {1}\n" +
+            "\tTags (encoded): {2}\n" +
+            "\tTags: {3}\n" +
+            "\tType: {4}\n" +
+            "\tCreated At: {5}\n" +
+            "\tDuration: {6}\n" +
+            "\tNSFW: {7}\n" +
+            "\tMade by: {8}\n\n";
         
         public string InfoPath => Path.Combine(Environment.CurrentDirectory, Constants.CoubInfoDir);
 
@@ -54,6 +65,11 @@ namespace CoubDownloader
         private string GetMetaDataLocation(string dir)
         {
             return Path.Combine(Path.Combine(InfoPath, dir), Constants.MetaDataFileName);
+        }
+        
+        private string GetRawMetaDataLocation(string dir)
+        {
+            return Path.Combine(Path.Combine(InfoPath, dir), Constants.RawMetaDataFileName);
         }
 
         private bool AlreadyDownloaded(string dir)
@@ -162,7 +178,8 @@ namespace CoubDownloader
             Console.WriteLine($"Starting gathering links for '{dir}'...");
             var links = GetLinks(baseUrl, 1, token);
     
-            var metaDataPath = GetMetaDataLocation(dir);
+            var rawMetaDataPath = GetRawMetaDataLocation(dir);
+            var formattedMetaDataPath = GetMetaDataLocation(dir);
             var urlsPath = GetUrlListLocation(dir);
 
             if (!Directory.Exists(InfoPath))
@@ -176,13 +193,20 @@ namespace CoubDownloader
                 Directory.CreateDirectory(subDirectory);
             }
             
-            Console.WriteLine("Writing crawled URLs...");
+            // Save URLs
+            Console.WriteLine("Saving crawled URLs...");
             var urlLinks = string.Join("\n", links.Select(x => x.Link));
             File.WriteAllText(urlsPath, urlLinks, ASCIIEncoding.UTF8);
 
+            // Save raw metadata
+            Console.WriteLine("Saving metadata...");
+            var metaData = string.Join(",\n", links.Select(x => x.RawData));
+            File.WriteAllText(rawMetaDataPath, metaData, ASCIIEncoding.UTF8);
+            
+            // Save formatted metadata
             Console.WriteLine("Saving metadata details...");
             var formattedLinks = string.Join("\n", links.Select(x => x.FormattedData));
-            File.WriteAllText(metaDataPath, formattedLinks, ASCIIEncoding.UTF8);
+            File.WriteAllText(formattedMetaDataPath, formattedLinks, ASCIIEncoding.UTF8);
         }
         
         private static List<CoubDownloadResult> GetLinks(string baseUrl, int page, string token)
@@ -222,18 +246,25 @@ namespace CoubDownloader
                     tags.Add(tag.title.ToString());
                 }
 
-                var formatted = "https://coub.com/view/" + coub.permalink
-                                     + "         | " + coub.title
-                                     + " | " + string.Join(",", tags)
-                                     + " | " + string.Join(",", tagsEncoded)
-                    .Replace("\r\n", "") // Remove any line-breaks that is often in the tags
-                    .Replace("\n", "")
-                    .Replace("\r", "");
+                var isNsfw = (bool?)coub.not_safe_for_work ?? false;
+                string title = coub.title.ToString();
+                    
+                var formatted = string.Format(DataFormat,
+                    "https://coub.com/view/" + coub.permalink,
+                    title.RemoveLinebreaks(),
+                    string.Join(",", tagsEncoded).RemoveLinebreaks(),
+                    string.Join(",", tags),
+                    coub.type,
+                    coub.created_at,
+                    coub.duration,
+                    isNsfw ? "Yes" : "No",
+                    coub.channel.permalink);
                 
                 var result = new CoubDownloadResult
                 {
                     Link = "https://coub.com/view/" + coub.permalink,
-                    FormattedData = formatted.ToString()
+                    FormattedData = formatted.ToString(),
+                    RawData = coub.ToString()
                 };
 
                 downloadedData.Add(result);

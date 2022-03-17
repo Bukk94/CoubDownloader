@@ -80,3 +80,8 @@ and other minor problems.
 * Some titles are so much crazy that they will appear in root directory with
 just plain coub ID
 * Error in the download process will crash whole program
+
+## Troubleshooting
+* Common problem is that tool is immediately closed after running. 
+ This might be caused by missing .NET 5.0 library. 
+ Try downloading self-contained version of the tool or install missing library.

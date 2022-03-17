@@ -7,5 +7,6 @@
         
         public const string UrlListFileName = "url_list.txt";
         public const string MetaDataFileName = "metadata.txt";
+        public const string RawMetaDataFileName = "raw_metadata.txt";
     }
 }

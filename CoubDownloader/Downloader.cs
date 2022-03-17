@@ -5,6 +5,7 @@ namespace CoubDownloader
 {
     public class Downloader
     {
+        private const string DownloadedArchive = "downloaded.txt";
         private string coubsDir = Path.Combine(Environment.CurrentDirectory, Constants.CoubDataDir);
 
         public void DownloadCoubs(string path)
@@ -38,7 +39,7 @@ namespace CoubDownloader
             try
             {
                 Run.RunCommand(
-                    $"python.exe -X utf8 coub_v2.py -l {Constants.CoubInfoDir}\\{dir}\\{Constants.UrlListFileName} -o \"{Constants.CoubDataDir}\\{dir}\\%id%_%title%\"",
+                    $"python.exe -X utf8 coub_v2.py -l {Constants.CoubInfoDir}\\{dir}\\{Constants.UrlListFileName} -o \"{Constants.CoubDataDir}\\{dir}\\%id%_%title%\" --use-archive {Constants.CoubInfoDir}\\{DownloadedArchive}",
                     Environment.CurrentDirectory);
                 
                 Console.WriteLine("DONE");

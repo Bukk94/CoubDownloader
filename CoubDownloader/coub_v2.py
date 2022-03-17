@@ -903,6 +903,8 @@ def main():
     msg("\n### Download Coubs ###\n")
     count = 0
     done = 0
+    skipped = 0
+    unavailable = 0
     for c in coubs.parsed:
         count += 1
         msg("  ", count, " out of ", len(coubs.parsed), " (", c, ")", sep="")
@@ -915,6 +917,7 @@ def main():
         if (opts.archive_file and read_archive(c_id)) or \
            (not opts.out_format and exists(c_id) and not overwrite()):
             msg("Already downloaded!")
+            skipped += 1
             clean()
             continue
 
@@ -923,6 +926,7 @@ def main():
             req_json = urlopen(req).read()
         except urllib.error.HTTPError:
             err("Error: Coub unavailable!")
+            unavailable += 1
             continue
         req_json = json.loads(req_json)
 
@@ -942,6 +946,7 @@ def main():
         except IndexError:
             if opts.a_only:
                 err("Error: Audio or coub unavailable!")
+                unavailable += 1
                 continue
             a_link = None
             a_ext = None
@@ -952,6 +957,7 @@ def main():
             msg("Already downloaded!")
             clean()
             done += 1
+            skipped += 1
             continue
 
         if opts.sleep_dur and count > 1:
@@ -986,6 +992,7 @@ def main():
         done += 1
 
     msg("\n### Finished ###\n")
+    msg("Processed: ", done, " Skipped: ", skipped, " Unavailable: ", unavailable, "\n")
 
     # Indicate failure if not all input coubs exist after execution
     if done < count:
