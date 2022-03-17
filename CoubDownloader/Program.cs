@@ -11,12 +11,6 @@ namespace CoubDownloader
             try
             {
                 var input = GetDownloadInput();
-                if (string.IsNullOrWhiteSpace(input))
-                {
-                    Console.Error.WriteLine("No input, exiting...");
-                    return;
-                }
-                
                 GetCoubs(input);
             }
             catch (Exception ex)
@@ -34,7 +28,8 @@ namespace CoubDownloader
         {
             Console.WriteLine("What do you want to download?");
             Console.WriteLine("You can download your liked coubs by typing liked, bookmarks or any channel by entering its username");
-            Console.WriteLine("You can download multiple channels, separated by comma.\n");
+            Console.WriteLine("You can download multiple channels, separated by comma.");
+            Console.WriteLine("If you already have a list of URLs in correct format, leave input empty and just press enter.\n");
             Console.WriteLine("Input example: liked,bookmarks,channelone,redcoubhead,just.for.kicks");
             
             Console.Write("Input: ");
@@ -48,14 +43,20 @@ namespace CoubDownloader
             var crawler = new Crawler();
             var downloader = new Downloader();
 
-            var toDownload = input.Split(",", StringSplitOptions.RemoveEmptyEntries)
-                                       .Select(x => x.Trim())
-                                       .ToArray();
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.Error.WriteLine("No user input, looking for already downloaded links...");
+            }
+            else
+            {
+                var toDownload = input.Split(",", StringSplitOptions.RemoveEmptyEntries)
+                                           .Select(x => x.Trim())
+                                           .ToArray();
             
-            crawler.CrawlUrls(toDownload);
+                crawler.CrawlUrls(toDownload);
+            }
             
             downloader.DownloadCoubs(crawler.InfoPath);
         }
-        
     }
 }

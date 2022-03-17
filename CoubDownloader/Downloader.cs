@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Net;
-using System.Text;
-using Newtonsoft.Json.Linq;
-using System.Linq;
-using System.Collections.Generic;
 using System.IO;
 
 namespace CoubDownloader

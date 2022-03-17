@@ -18,7 +18,8 @@ namespace CoubDownloader
                 FileName = "cmd",
                 RedirectStandardOutput = false,
                 RedirectStandardInput = true,
-                WorkingDirectory = workingDirectory
+                WorkingDirectory = workingDirectory,
+                Arguments = "/k"
             };
 
             var process = Process.Start(processStartInfo);

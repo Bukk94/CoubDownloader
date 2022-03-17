@@ -1,5 +1,8 @@
 ﻿# Coub Downloader
 
+[![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
+![version](https://img.shields.io/badge/version-0.2-blue)
+
 This downloader is targeted at Windows machines for all fans of [Coub](http://www.coub.com).
 For now, this downloader is able to download: 
 * **LIKED** coubs from user's profile (keyword `liked`)
@@ -18,12 +21,14 @@ If user is downloading liked/bookmarked coubs, he must provide personal Access T
 Tool will automatically skip URL gathering if URL list already exists and 
 skips all already downloaded coubs (if name matches).
 
-You can also force downloader to download your own list by inserting it
-into proper structure.
+You can also choose to download your own list by inserting it
+into proper structure. Filename must be `url_list.txt` and 
+URLs must be separated by new-lines. When running the downloader,
+during input insert nothing (just hit enter to continue).
 
 ## Requirements
-* Python 3.6 and above
 * ffmpeg
+* Python 3.6 and above (included in release package)
 
 ## How to install ffmpeg
 
@@ -33,21 +38,22 @@ into proper structure.
 * `setx /m PATH "C:\ffmpeg\bin;%PATH%"`
 * Restart PC (yes, this is mandatory)
 
-If you change the path from C:\ffmpeg, modify the command accordingly
+If you save ffmpeg into different folder than `C:\ffmpeg`, don't forget to 
+modify the command in CMD accordingly to match actual `\bin` directory.
 
 ## How to run
 * Download latest release package (already contain portable Python)
 * Make sure you have ffmpeg installed
-* Run CoubDownloader.exe
-* Enter channels to download or `liked` to download liked coubs.
-  * You can download multiple channels at once, separated by comma
+* Run `CoubDownloader.exe`
+* Enter channels to download, `liked` or `bookmarks` to download liked/bookmarked coubs.
+  * You can download multiple channels at once, separated by comma (e.g. `liked,bookmarks,coub.channel`)
 
 ## Files structure
-* [Root]\Coubs-info\[dir]
+* [Root]\Coubs-info\\[dir]
   * Contains URLs to download as well as some metadata information like coub's
-    original name and tags. Each channel/liked has its own folder
-* [Root]\Coubs\[dir]
-  * Actual coubs downloaded by the downloader
+    original name and tags. Each category has its own folder
+* [Root]\Coubs\\[dir]
+  * Actual coubs downloaded by the tool
 
 ## How to find Access Token
 1. Log into your Coub account

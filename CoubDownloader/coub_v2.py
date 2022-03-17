@@ -605,6 +605,7 @@ def get_name(req_json, c_id):
     title = title.replace("?","")
     title = title.replace("|","")
     title = title.replace(")","")
+    title = title.replace("*","")
     title = title.replace("(","")
     title = title.replace(":","")
     title = title.replace("\\","")
@@ -618,7 +619,7 @@ def get_name(req_json, c_id):
         f.close()
         os.remove(name)
     except Exception:
-        err("Warning: Filename has some unsupported characters, trying to fix that", end="")
+        err("Warning: Filename has some unsupported characters, trying to fix that. ", end="")
         name = ''.join([i if ord(i) < 128 else '_' for i in name]).replace("?","")
         err("Trying '", name, "'.", sep="")
         # Try second time with sanitized filenames
