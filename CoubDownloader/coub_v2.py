@@ -581,7 +581,6 @@ def get_name(req_json, c_id):
 
     name = opts.out_format
     name = name.replace("%id%", c_id)
-    name = name.replace("%title%", req_json['title'])
     name = name.replace("%creation%", req_json['created_at'])
     name = name.replace("%channel%", req_json['channel']['title'])
     # Coubs don't necessarily have a category
@@ -598,16 +597,20 @@ def get_name(req_json, c_id):
     # Strip/replace special characters that can lead to script failure (ffmpeg concat)
     # ' common among coub titles
     # Newlines can be occasionally found as well
-    name = name.replace("'", "")
-    name = name.replace("\n", " ")
-    name = name.replace("\r", " ")
-    name = name.replace("/","")
-    name = name.replace("?","")
-    name = name.replace("|","")
-    name = name.replace(")","")
-    name = name.replace("(","")
-    name = name.replace(":","")
-    name = name.replace("\\\\","\\")
+    title = req_json['title']
+    title = title.replace("'", "")
+    title = title.replace("\n", " ")
+    title = title.replace("\r", " ")
+    title = title.replace("/","")
+    title = title.replace("?","")
+    title = title.replace("|","")
+    title = title.replace(")","")
+    title = title.replace("(","")
+    title = title.replace(":","")
+    title = title.replace("\\","")
+	
+    # Insert actual sanitized title
+    name = name.replace("%title%", title)
 	
     # First try the original filename
     try:
@@ -643,7 +646,7 @@ def exists(name):
         # to be safe check for both possible audio extensions
         full_name = [name + ".mp3", name + ".m4a"]
     else:
-        full_name = [name + ".mkv"]
+        full_name = [name + ".mp4"]
 
     for f in full_name:
         if os.path.exists(f):
@@ -655,7 +658,7 @@ def exists(name):
 
 def overwrite():
     """Decide if existing coub should be overwritten"""
-
+    return False # Never overwrite
     if opts.prompt_answer == "yes":
         return True
     elif opts.prompt_answer == "no":
