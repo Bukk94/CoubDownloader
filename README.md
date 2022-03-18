@@ -11,6 +11,8 @@ For now, this downloader is able to download:
 
 ## How it works
 
+![guide](CoubDownloader/Img/Example.gif)
+
 User will input names of what to download. Then the tool it will gather 
 all the links with Coubs metadata. In the second phase
 it will download all gathered coubs one by one. Each coub will be processed
