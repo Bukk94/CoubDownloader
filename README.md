@@ -34,9 +34,12 @@ during input insert nothing (just hit enter to continue).
 
 * Download newest version of [ffmpeg here](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z)
 * Unzip downloaded file, for example to `C:\ffmpeg`
-* Open CMD with admin privileges and type following command:
-* `setx /m PATH "C:\ffmpeg\bin;%PATH%"`
-* Restart PC (yes, this is mandatory)
+  * Go to `\bin` folder and find `ffmpeg.exe`
+  * Copy this executable file into root folder of the downloader (at the same level as CoubDownloader.exe)
+* **OR**
+  * Open CMD with admin privileges and type following command:
+  * `setx /m PATH "C:\ffmpeg\bin;%PATH%"`
+  * Restart PC (yes, this is mandatory)
 
 If you save ffmpeg into different folder than `C:\ffmpeg`, don't forget to 
 modify the command in CMD accordingly to match actual `\bin` directory.
@@ -82,6 +85,6 @@ just plain coub ID
 * Error in the download process will crash whole program
 
 ## Troubleshooting
-* Common problem is that tool is immediately closed after running. 
- This might be caused by missing .NET 5.0 library. 
- Try downloading self-contained version of the tool or install missing library.
+* **Problem**: Program closes right after opening
+  * **Solution**: This is caused by missing [.NET 5.0 runtime library](https://dotnet.microsoft.com/en-us/download/dotnet/5.0/runtime). 
+ Try installing the runtime or downloading self-contained version of the tool.

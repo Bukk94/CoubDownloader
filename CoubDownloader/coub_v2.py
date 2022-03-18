@@ -609,6 +609,7 @@ def get_name(req_json, c_id):
     title = title.replace("(","")
     title = title.replace(":","")
     title = title.replace("\\","")
+    title = title.replace("\"","")
 	
     # Insert actual sanitized title
     name = name.replace("%title%", title)

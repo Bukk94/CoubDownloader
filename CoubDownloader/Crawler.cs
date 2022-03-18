@@ -23,7 +23,7 @@ namespace CoubDownloader
             "\tCreated At: {5}\n" +
             "\tDuration: {6}\n" +
             "\tNSFW: {7}\n" +
-            "\tMade by: {8}\n\n";
+            "\tMade by: {8}\n";
         
         public string InfoPath => Path.Combine(Environment.CurrentDirectory, Constants.CoubInfoDir);
 
