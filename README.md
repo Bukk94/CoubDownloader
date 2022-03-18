@@ -1,7 +1,7 @@
 ﻿# Coub Downloader
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
-![version](https://img.shields.io/badge/version-0.3-blue)
+![version](https://img.shields.io/badge/version-0.4-blue)
 
 This downloader is targeted at Windows machines for all fans of [Coub](http://www.coub.com).
 For now, this downloader is able to download: 
@@ -12,7 +12,7 @@ For now, this downloader is able to download:
 ## How it works
 
 User will input names of what to download. Then the tool it will gather 
-all the links with some meta data. In the second phase
+all the links with Coubs metadata. In the second phase
 it will download all gathered coubs one by one. Each coub will be processed
 in highest available quality in mp4 format.
 
@@ -57,6 +57,24 @@ modify the command in CMD accordingly to match actual `\bin` directory.
     original name and tags. Each category has its own folder
 * [Root]\Coubs\\[dir]
   * Actual coubs downloaded by the tool
+
+## Understanding metadata
+### Basic raw metadata
+Metadata are JSON files containing detail information about each coub.
+Within those metadata you can find information like Coub's category,
+views/likes/dislikes count, tags, size, audio/video URLs with different qualities,
+if coub is NSFW, banned, age restricted, cropped, and many many more.
+
+### Segments
+Special metadata type are segments. I found them quite recently but they
+contain similar information like metadata. But in addition to that
+they contain raw video (without COUB watermark) as well as exact audio
+marks. 
+
+Not every coub has segments data (mostly recoubs) and sometimes the 
+segments might not be even generated. Segments generation can be tracked
+by linked state/progress. I assume that generation is triggered by 
+hitting correct API endpoint on /segments.
 
 ## How to find Access Token
 1. Log into your Coub account
