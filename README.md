@@ -89,12 +89,15 @@ There are several ways to obtaining your Access Token.
    ![guide](CoubDownloader/Img/Guide_3.png)
 
 4. After clicking on the lock, a small window appears. Select `Cookies`:
+
    ![guide](CoubDownloader/Img/Guide_4.png)
 
 5. New window will pop out. Select `coub.com` and then `Cookies` folder:
+
    ![guide](CoubDownloader/Img/Guide_5.png)
 
 6. In this list, find item called `remember_token`
+
    ![guide](CoubDownloader/Img/Guide_6.png)
 
 7. Click on this value and it should display details
