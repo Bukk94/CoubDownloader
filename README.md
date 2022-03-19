@@ -23,10 +23,15 @@ If user is downloading liked/bookmarked coubs, he must provide personal Access T
 Tool will automatically skip URL gathering if URL list already exists and 
 skips all already downloaded coubs (if name matches).
 
+### Downloading own list of URLs
 You can also choose to download your own list by inserting it
-into proper structure. Filename must be `url_list.txt` and 
-URLs must be separated by new-lines. When running the downloader,
-during input insert nothing (just hit enter to continue).
+into proper structure. Create a folder called `Coubs-info` 
+inside the folder where `CoubDownloader.exe` is. Inside that, create another
+folder, call it whatever you want. And inside that, create file `url_list.txt`
+with URLs to download. URLs must be separated by new-lines.
+
+Final structure should look like this: `CoubDownloader\Coubs-info\mylist\url_list.txt`.
+When running the downloader,  during input insert nothing (just hit enter to continue).
 
 ## Requirements
 * ffmpeg
