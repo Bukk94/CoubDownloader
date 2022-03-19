@@ -3,11 +3,13 @@
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
 ![version](https://img.shields.io/badge/version-0.4-blue)
 
-This downloader is targeted at Windows machines for all fans of [Coub](http://www.coub.com).
+This downloader is console application targeted for Windows users and 
+all fans of [Coub](http://www.coub.com).
 For now, this downloader is able to download: 
 * **LIKED** coubs from user's profile (keyword `liked`)
 * **Bookmarked** coubs (keyword `bookmarks`)
 * Coubs from any channel
+* Own list of Coub URLs
 
 ## How it works
 
