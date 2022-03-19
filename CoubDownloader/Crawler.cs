@@ -331,6 +331,7 @@ namespace CoubDownloader
                     }
                     catch (Exception ex)
                     {
+                        // A lot of recoubed videos don't have segments for some reason
                         if (ex.Message.Contains("The remote server returned an error: (404) Not Found.") &&
                             coub.type.ToString() != "Coub::Recoub")
                         {

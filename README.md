@@ -68,7 +68,7 @@ views/likes/dislikes count, tags, size, audio/video URLs with different qualitie
 if coub is NSFW, banned, age restricted, cropped, and many many more.
 
 ### Segments
-Special metadata type are segments. I found them quite recently but they
+Special metadata type are segments. They
 contain similar information like metadata. But in addition to that
 they contain raw video (without COUB watermark) as well as exact audio
 marks. 
@@ -79,8 +79,32 @@ by linked state/progress. I assume that generation is triggered by
 hitting correct API endpoint on /segments.
 
 ## How to find Access Token
+There are several ways to obtaining your Access Token.
+
+**Option 1:**
 1. Log into your Coub account
-2. Go to your [likes page](https://coub.com/likes).
+2. Go to your [likes page](https://coub.com/likes)
+3. Next the URL address, you'll find a small lock icon
+
+   ![guide](CoubDownloader/Img/Guide_3.png)
+
+4. After clicking on the lock, a small window appears. Select `Cookies`:
+   ![guide](CoubDownloader/Img/Guide_4.png)
+
+5. New window will pop out. Select `coub.com` and then `Cookies` folder:
+   ![guide](CoubDownloader/Img/Guide_5.png)
+
+6. In this list, find item called `remember_token`
+   ![guide](CoubDownloader/Img/Guide_6.png)
+
+7. Click on this value and it should display details
+8. You should see long set of numbers and letters, this is your Access Token, 
+ copy it to the tool when asked. 
+
+**Option 2:**
+
+1. Log into your Coub account
+2. Go to your [likes page](https://coub.com/likes)
 3. Open developer console (press F12 if using Google Chrome)
 4. Go to Network tab (number 1 in picture)
 5. Reload the page (refresh / press F5)
@@ -88,7 +112,8 @@ hitting correct API endpoint on /segments.
 7. To ease the search, type 'likes' into the search bar (number 2 in picture)
 8. Click on the row called 'likes' (number 3 in picture)
 9. In 'Response Headers', search for value `remember_token=`
-10. The value after `=` is your Access Token, copy in to this app
+10. The value after `=` is your Access Token, 
+copy it to the tool when asked.
 
 ![guide](CoubDownloader/Img/Guide_1.png)
 ![guide_2](CoubDownloader/Img/Guide_2.png)
