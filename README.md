@@ -147,15 +147,13 @@ copy it to the tool when asked.
 ![guide](CoubDownloader/Img/Guide_1.png)
 ![guide_2](CoubDownloader/Img/Guide_2.png)
 
-## Credits
+## Credit
 
 Downloader in python was written by [artemtar](https://github.com/artemtar/CoubDownloader).
 I forked his repo and made several adjustments to avoid common formatting issues
 and other minor problems.
 
 ## Known problems
-* Some titles are so much crazy that they will appear in root directory with
-just plain coub ID
 * Error in the download process will crash whole program
 
 ## Troubleshooting
