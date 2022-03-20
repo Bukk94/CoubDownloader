@@ -38,9 +38,25 @@ namespace CoubDownloader
 
             try
             {
-                Run.RunCommand(
-                    $"python.exe -X utf8 coub_v2.py -l {Constants.CoubInfoDir}\\{dir}\\{Constants.UrlListFileName} -o \"{Constants.CoubDataDir}\\{dir}\\%id%_%title%\" --use-archive {Constants.CoubInfoDir}\\{DownloadedArchive}",
-                    Environment.CurrentDirectory);
+                ExecuteCommand(
+                    $"{Constants.CoubInfoDir}\\{dir}\\{Constants.UrlListFileName}",
+                    $"{Constants.CoubDataDir}\\{dir}\\%id%_%title%");
+
+                var repostsList = $"{Constants.CoubInfoDir}\\{dir}\\{Constants.RepostUrlListFileName}";
+                if (File.Exists(repostsList))
+                {
+                    Console.WriteLine($"Starting download of '{dir}' reposts...");
+                    
+                    var repostsPath = $"{Constants.CoubDataDir}\\{dir}\\{Constants.RepostsDir}";
+                    if (!Directory.Exists(repostsPath))
+                    {
+                        Directory.CreateDirectory(repostsPath);
+                    }
+                    
+                    ExecuteCommand(
+                        repostsList,
+                        $"{repostsPath}\\%id%_%title%");
+                }
                 
                 Console.WriteLine("DONE");
             }
@@ -50,11 +66,18 @@ namespace CoubDownloader
             }
         }
         
+        private static void ExecuteCommand(string inputList, string target)
+        {
+            Run.RunCommand(
+                $"python.exe -X utf8 coub_v2.py -l {inputList} -o \"{target}\" --use-archive {Constants.CoubInfoDir}\\{DownloadedArchive}",
+                Environment.CurrentDirectory);
+        }
+        
         private string GetDownloadLocation(string dir)
         {
             return Path.Combine(coubsDir, dir);
         }
-        
+
         private void EnsureInput(string dir)
         {
             // coub_v2.py is creating temp list for data

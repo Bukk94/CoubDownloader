@@ -16,6 +16,7 @@ namespace CoubDownloader
         private const int PageLimit = 25;
         private const string LikedCategory = "liked";
         private const string BookmarksCategory = "bookmarks";
+        private const string BaseUrl = "https://coub.com/view/";
 
         private const string DataFormat =
             "{0}\n" +
@@ -236,10 +237,20 @@ namespace CoubDownloader
             }
             
             // Save URLs
-            Console.WriteLine("Saving crawled URLs...");
-            var urlLinks = string.Join("\n", links.Select(x => x.Link));
+            var linksList = links.Where(x => !x.IsRepost).Select(x => x.Link).ToList();
+            Console.WriteLine($"Saving {linksList.Count} crawled URLs...");
+            var urlLinks = string.Join("\n", linksList);
             File.WriteAllText(urlsPath, urlLinks, Encoding.UTF8);
 
+            // Save reposts
+            if (links.Any(x => x.IsRepost))
+            {
+                Console.WriteLine($"Saving {links.Count(x => x.IsRepost)} repost URLs...");
+                var repostsPath = GetDataPath(dir, Constants.RepostUrlListFileName);
+                var repostLinks = string.Join("\n", links.Where(x => x.IsRepost).Select(x => x.RepostUrl));
+                File.WriteAllText(repostsPath, repostLinks, Encoding.UTF8);
+            }
+            
             // Save raw metadata
             Console.WriteLine("Saving metadata...");
             var metaData = string.Join(",\n", links.Select(x => x.RawData));
@@ -321,6 +332,13 @@ namespace CoubDownloader
                 string permalink = coub.permalink.ToString();
                 string title = coub.title.ToString();
                 var segments = string.Empty;
+
+                var repostUrl = string.Empty;
+                var isRepost = (bool)(coub.recoub_to.GetHashCode() != 0); // Working with JValue type, if hash is 0, it has no value
+                if (isRepost)
+                {
+                    repostUrl = BaseUrl + coub.recoub_to.permalink.ToString();
+                }
                 
                 if (_crawlSegments)
                 {
@@ -341,7 +359,7 @@ namespace CoubDownloader
                 }
                 
                 var formatted = string.Format(DataFormat,
-                    "https://coub.com/view/" + permalink,
+                    BaseUrl + permalink,
                     title.RemoveLinebreaks(),
                     string.Join(",", tagsEncoded).RemoveLinebreaks(),
                     string.Join(",", tags),
@@ -353,7 +371,9 @@ namespace CoubDownloader
                 
                 var result = new CoubDownloadResult
                 {
-                    Link = "https://coub.com/view/" + coub.permalink,
+                    Link = BaseUrl + permalink,
+                    IsRepost = isRepost,
+                    RepostUrl = repostUrl,
                     FormattedData = formatted.ToString(),
                     RawData = coub.ToString(),
                     Segments = (permalink, segments)

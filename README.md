@@ -1,15 +1,32 @@
 ﻿# Coub Downloader
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
-![version](https://img.shields.io/badge/version-0.4-blue)
+![version](https://img.shields.io/badge/version-0.5-blue)
 
 This downloader is console application targeted for Windows users and 
 all fans of [Coub](http://www.coub.com).
 For now, this downloader is able to download: 
 * **LIKED** coubs from user's profile (keyword `liked`)
 * **Bookmarked** coubs (keyword `bookmarks`)
-* Coubs from any channel
-* Own list of Coub URLs
+* **Coubs** from any channel
+* Channel's **reposts**
+* **Own list** of Coub URLs
+
+### Table of contents
+
+* [How it works](#how-it-works)
+    + [Downloading own list of URLs](#downloading-own-list-of-urls)
+* [Requirements](#requirements)
+* [How to install ffmpeg](#how-to-install-ffmpeg)
+* [How to run](#how-to-run)
+* [Files structure](#files-structure)
+* [Understanding metadata](#understanding-metadata)
+    + [Basic raw metadata](#basic-raw-metadata)
+    + [Segments](#segments)
+* [How to find Access Token](#how-to-find-access-token)
+* [Credits](#credits)
+* [Known problems](#known-problems)
+* [Troubleshooting](#troubleshooting)
 
 ## How it works
 
@@ -54,10 +71,10 @@ If you save ffmpeg into different folder than `C:\ffmpeg`, don't forget to
 modify the command in CMD accordingly to match actual `\bin` directory.
 
 ## How to run
-* Download latest release package (already contain portable Python)
+* Download [latest release package](https://github.com/Bukk94/CoubDownloader/releases) (already contain portable Python)
 * Make sure you have ffmpeg installed
 * Run `CoubDownloader.exe`
-* Enter channels to download, `liked` or `bookmarks` to download liked/bookmarked coubs.
+* Enter channels to download, keywords `liked` or `bookmarks` to download liked/bookmarked coubs.
   * You can download multiple channels at once, separated by comma (e.g. `liked,bookmarks,coub.channel`)
 
 ## Files structure
@@ -66,6 +83,8 @@ modify the command in CMD accordingly to match actual `\bin` directory.
     original name and tags. Each category has its own folder
 * [Root]\Coubs\\[dir]
   * Actual coubs downloaded by the tool
+* [Root]\Coubs\\[dir]\\Reposts
+    * Channel reposted coubs
 
 ## Understanding metadata
 ### Basic raw metadata

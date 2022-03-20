@@ -6,7 +6,7 @@ namespace CoubDownloader
 {
     public class Program
     {
-        private const string Version = "0.4";
+        private const string Version = "0.5";
         
         public static void Main()
         {
