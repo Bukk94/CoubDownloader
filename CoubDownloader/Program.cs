@@ -6,7 +6,7 @@ namespace CoubDownloader
 {
     public class Program
     {
-        private const string Version = "0.5";
+        private const string Version = "0.6";
         
         public static void Main()
         {
@@ -47,20 +47,21 @@ namespace CoubDownloader
             var crawler = new Crawler();
             var downloader = new Downloader();
 
-            if (string.IsNullOrWhiteSpace(input))
+            var toDownload = input?.Split(",", StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToArray() ?? Array.Empty<string>();
+            
+            if (!toDownload.Any())
             {
                 Console.Error.WriteLine("No user input, looking for already downloaded links...");
             }
             else
             {
-                var toDownload = input.Split(",", StringSplitOptions.RemoveEmptyEntries)
-                                           .Select(x => x.Trim())
-                                           .ToArray();
-            
                 crawler.CrawlUrls(toDownload);
             }
             
-            downloader.DownloadCoubs(crawler.InfoPath);
+            downloader.DownloadCoubs(crawler.InfoPath, toDownload);
         }
     }
 }

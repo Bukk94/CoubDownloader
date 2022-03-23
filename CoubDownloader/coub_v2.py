@@ -961,6 +961,8 @@ def main():
             clean()
             done += 1
             skipped += 1
+            if opts.archive_file:
+                write_archive(c_id)
             continue
 
         if opts.sleep_dur and count > 1:

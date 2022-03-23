@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 
 namespace CoubDownloader
 {
@@ -8,13 +9,14 @@ namespace CoubDownloader
         private const string DownloadedArchive = "downloaded.txt";
         private string coubsDir = Path.Combine(Environment.CurrentDirectory, Constants.CoubDataDir);
 
-        public void DownloadCoubs(string path)
+        public void DownloadCoubs(string infoPath, string[] dirs)
         {
-            var directoriesToDownload = Directory.GetDirectories(path);
+            var directoriesToDownload = dirs.Any() ? dirs : Directory.GetDirectories(infoPath);
+            
             foreach (var directory in directoriesToDownload)
             {
                 var dir = new DirectoryInfo(directory).Name;
-                if (!HasUrlList(path, dir))
+                if (!HasUrlList(infoPath, dir))
                 {
                     Console.WriteLine($"No URL list for category '{dir}' found, skipping download...");
                     continue;
@@ -24,7 +26,7 @@ namespace CoubDownloader
             }
         }
 
-        private bool HasUrlList(string path, string dir)
+        private static bool HasUrlList(string path, string dir)
         {
             var filename = Path.Combine(Path.Combine(path, dir), Constants.UrlListFileName);
             return File.Exists(filename);

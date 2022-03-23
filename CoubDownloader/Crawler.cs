@@ -54,7 +54,7 @@ namespace CoubDownloader
         
         private void DownloadChannelCoubs(string channel)
         {
-            if (AlreadyDownloaded(channel))
+            if (ShouldSkipDownloaded(channel))
             {
                 return;
             }
@@ -85,23 +85,35 @@ namespace CoubDownloader
             }
         }
 
-        private bool AlreadyDownloaded(string dir)
+        private bool ShouldSkipDownloaded(string dir)
         {
             var urlsPath = GetDataPath(dir, Constants.UrlListFileName);
 
-            if (File.Exists(urlsPath))
+            if (!File.Exists(urlsPath))
             {
-                Console.WriteLine($"URL list for '{dir}' found! Skipping crawling.");
-                return true;
+                // No file exists for this directory so no skip
+                return false;
             }
 
-            return false;
+            var urlsCount = File.ReadLines(urlsPath).Count();
+            Console.WriteLine($"Found URL list for '{dir}' with {urlsCount} links!");
+            Console.WriteLine("Download the list again to get newest changes? Original list will be deleted, but already downloaded coubs will remain unchanged.");
+            Console.Write("Type Y for yes or N for no (then press enter): ");
+            var answer = Console.ReadLine()?.ToLower();
+            if (answer == "y" || answer == "yes")
+            {
+                // User wants new crawl, remove original file
+                File.Delete(urlsPath);
+                return false;
+            }
+
+            return true;
         }
 
         private void DownloadLikedCoubs()
         {
             var dir = LikedCategory;
-            if (AlreadyDownloaded(dir))
+            if (ShouldSkipDownloaded(dir))
             {
                 return;
             }
@@ -139,7 +151,7 @@ namespace CoubDownloader
         private void DownloadBookmarkedCoubs()
         {
             var dir = BookmarksCategory;
-            if (AlreadyDownloaded(dir))
+            if (ShouldSkipDownloaded(dir))
             {
                 return;
             }
@@ -198,7 +210,7 @@ namespace CoubDownloader
                 return _usersAccessToken;
             }
             
-            Console.WriteLine("Write/paste your access token. Read README if you don't know how to get it");
+            Console.WriteLine("Write/paste your access token. Read README if you don't know how to get it.");
             Console.Write("Access Token: ");
             var token = Console.ReadLine();
             token = token?.Replace("remember_token=", "").Trim();
