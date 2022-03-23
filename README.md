@@ -56,8 +56,12 @@ during input insert nothing (just hit enter to continue) or insert name
 of the folder (in this case `MyList`).
 
 ## Requirements
+No installation or additional download needed if you'll download `full` 
+version of the Downloader in the [Releases](https://github.com/Bukk94/CoubDownloader/releases) section.
+
+Otherwise it depends on:
 * ffmpeg
-* Python 3.6 and above (included in release package)
+* Python 3.6 and above (included in all release packages)
 
 ## How to install ffmpeg
 
