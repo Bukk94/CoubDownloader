@@ -1,7 +1,7 @@
 ﻿# Coub Downloader
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
-![version](https://img.shields.io/badge/version-0.5-blue)
+![version](https://img.shields.io/badge/version-0.6-blue)
 
 This downloader is console application targeted for Windows users and 
 all fans of [Coub](http://www.coub.com).
@@ -46,11 +46,14 @@ skips all already downloaded coubs (if name matches).
 You can also choose to download your own list by inserting it
 into proper structure. Create a folder called `Coubs-info` 
 inside the folder where `CoubDownloader.exe` is. Inside that, create another
-folder, call it whatever you want. And inside that, create file `url_list.txt`
-with URLs to download. URLs must be separated by new-lines.
+folder, call it whatever you want (e.g. `MyList`). And inside that subfolder, 
+create file `url_list.txt` with URLs to download. 
+**URLs must be separated by new-lines.**
 
 Final structure should look like this: `CoubDownloader\Coubs-info\mylist\url_list.txt`.
-When running the downloader,  during input insert nothing (just hit enter to continue).
+When running the downloader, 
+during input insert nothing (just hit enter to continue) or insert name 
+of the folder (in this case `MyList`).
 
 ## Requirements
 * ffmpeg
