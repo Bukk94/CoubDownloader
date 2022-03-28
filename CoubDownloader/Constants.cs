@@ -2,6 +2,11 @@
 {
     public static class Constants
     {
+        /// <summary>
+        ///     Wait between each download, in seconds.
+        /// </summary>
+        public const int WaitBetweenDownloads = 1;
+        
         public const string CoubInfoDir = "Coubs-info";
         public const string CoubDataDir = "Coubs";
         public const string RepostsDir = "Reposts";

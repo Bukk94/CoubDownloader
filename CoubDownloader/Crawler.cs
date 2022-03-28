@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using Newtonsoft.Json;
 
 namespace CoubDownloader
@@ -293,7 +294,9 @@ namespace CoubDownloader
 
         private static string DownloadJson(string url, string token = null)
         {
+            Thread.Sleep(Constants.WaitBetweenDownloads * 1000);
             var request = (HttpWebRequest)WebRequest.Create(url);
+            request.UserAgent = UserAgent.GetRandomAgent();
             
             if (!string.IsNullOrWhiteSpace(token))
             {

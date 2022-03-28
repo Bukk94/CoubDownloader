@@ -6,7 +6,7 @@ namespace CoubDownloader
 {
     public class Program
     {
-        private const string Version = "0.6";
+        private const string Version = "0.7";
         
         public static void Main()
         {
@@ -31,7 +31,7 @@ namespace CoubDownloader
         private static string GetDownloadInput()
         {
             Console.WriteLine("What do you want to download?");
-            Console.WriteLine("You can download your liked coubs by typing liked, bookmarks or any channel by entering its username");
+            Console.WriteLine("You can download your liked coubs by typing liked, bookmarks or any channel by entering its username (not displayname!)");
             Console.WriteLine("You can download multiple channels, separated by comma.");
             Console.WriteLine("If you already have a list of URLs in correct format, leave input empty and just press enter.\n");
             Console.WriteLine("Input example: liked,bookmarks,channelone,redcoubhead,just.for.kicks");

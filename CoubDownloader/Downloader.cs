@@ -71,7 +71,7 @@ namespace CoubDownloader
         private static void ExecuteCommand(string inputList, string target)
         {
             Run.RunCommand(
-                $"python.exe -X utf8 coub_v2.py -l {inputList} -o \"{target}\" --use-archive {Constants.CoubInfoDir}\\{DownloadedArchive}",
+                $"python.exe -X utf8 coub_v2.py -l {inputList} -o \"{target}\" --use-archive {Constants.CoubInfoDir}\\{DownloadedArchive} --sleep {Constants.WaitBetweenDownloads}",
                 Environment.CurrentDirectory);
         }
         

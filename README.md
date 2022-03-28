@@ -1,7 +1,7 @@
 ﻿# Coub Downloader
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
-![version](https://img.shields.io/badge/version-0.6-blue)
+![version](https://img.shields.io/badge/version-0.7-blue)
 
 This downloader is console application targeted for Windows users and 
 all fans of [Coub](http://www.coub.com).
@@ -19,6 +19,7 @@ For now, this downloader is able to download:
 * [Requirements](#requirements)
 * [How to install ffmpeg](#how-to-install-ffmpeg)
 * [How to run](#how-to-run)
+    + [Username vs Display name](#username-vs-display-name)
 * [Files structure](#files-structure)
 * [Understanding metadata](#understanding-metadata)
     + [Basic raw metadata](#basic-raw-metadata)
@@ -81,8 +82,17 @@ modify the command in CMD accordingly to match actual `\bin` directory.
 * Download [latest release package](https://github.com/Bukk94/CoubDownloader/releases) (already contain portable Python)
 * Make sure you have ffmpeg installed
 * Run `CoubDownloader.exe`
-* Enter channels to download, keywords `liked` or `bookmarks` to download liked/bookmarked coubs.
+* Enter channels usernames (not display names!) to download, keywords `liked` or `bookmarks` to download liked/bookmarked coubs.
   * You can download multiple channels at once, separated by comma (e.g. `liked,bookmarks,coub.channel`)
+
+### Username vs Display name
+If you want to download specific channel, you must enter channel's username.
+This can be confusing as username is not same thing as Display name. 
+My display name is `Bukk94`, but my username is `bukk9433113`.
+
+Username is often auto-generated (unless specified otherwise) with 
+8 or more characters, numbers, dots or dashes. Username can be
+found as part of the channel's URL address (e.g. `https://coub.com/bukk9433113`).
 
 ## Files structure
 * [Root]\Coubs-info\\[dir]
@@ -159,9 +169,6 @@ copy it to the tool when asked.
 Downloader in python was written by [artemtar](https://github.com/artemtar/CoubDownloader).
 I forked his repo and made several adjustments to avoid common formatting issues
 and other minor problems.
-
-## Known problems
-* Error in the download process will crash whole program
 
 ## Troubleshooting
 * **Problem**: Program closes right after opening

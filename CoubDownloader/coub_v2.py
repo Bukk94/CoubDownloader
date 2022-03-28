@@ -4,10 +4,12 @@ import sys
 import os
 import time
 import json
+import random
 import subprocess
 from fnmatch import fnmatch
 
 import urllib.error
+import urllib.request
 from urllib.request import urlopen, urlretrieve
 from urllib.parse import quote as urlquote
 import os, ssl
@@ -804,9 +806,27 @@ def stream_lists(data):
     return (video, audio)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def download_with_retry(v_link, a_link, a_ext, name, iteration=0):
+    try:
+        download(v_link, a_link, a_ext, name)
+    except Exception:
+        if iteration < 2:
+            iteration += 1
+            download_with_retry(v_link, a_link, a_ext, name, iteration)
+        else:
+            raise
 
 def download(v_link, a_link, a_ext, name):
     """Download individual coub streams"""
+
+    """Randomize user agent a bit"""
+    n1 = random.randint(3000,4600)
+    n2 = random.randint(500,600)
+    n3 = random.randint(80,100)
+    agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/{1}.43 (KHTML, like Gecko) Chrome/{2}.0.{0}.82 Safari/537.36 OPR/79.0.4143.56'.format(n1, n2, n3)
+    opener = urllib.request.build_opener()
+    opener.addheaders = [('User-agent', agent)]
+    urllib.request.install_opener(opener)
 
     if not opts.a_only:
         try:
@@ -971,8 +991,9 @@ def main():
         # Download video/audio streams
         # Skip if the requested media couldn't be downloaded
         try:
-            download(v_link, a_link, a_ext, name)
-        except (IndexError, urllib.error.HTTPError):
+            download_with_retry(v_link, a_link, a_ext, name)
+        except Exception:
+            err("Error: Failed to download coub ", c_id, "!", sep="")
             continue
 
         # Merge video and audio
