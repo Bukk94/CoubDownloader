@@ -173,4 +173,4 @@ and other minor problems.
 ## Troubleshooting
 * **Problem**: Program closes right after opening
   * **Solution**: This is caused by missing [.NET 5.0 runtime library](https://dotnet.microsoft.com/en-us/download/dotnet/5.0/runtime). 
- Try installing the runtime or downloading self-contained version of the tool.
+ Try installing the runtime library or downloading full version of the tool.
