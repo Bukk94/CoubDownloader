@@ -6,12 +6,15 @@ using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using CoubDownloader.Configurations;
+using CoubDownloader.Extensions;
 using Newtonsoft.Json;
 
 namespace CoubDownloader
 {
     public class Crawler
     {
+        private readonly Configuration _configuration;
         private string _usersAccessToken;
         private bool _crawlSegments;
         private const int PageLimit = 25;
@@ -29,6 +32,11 @@ namespace CoubDownloader
             "\tDuration: {6}\n" +
             "\tNSFW: {7}\n" +
             "\tMade by: {8}\n";
+
+        public Crawler(Configuration configuration)
+        {
+            _configuration = configuration;
+        }
         
         public string InfoPath => Path.Combine(Environment.CurrentDirectory, Constants.CoubInfoDir);
         
@@ -71,18 +79,10 @@ namespace CoubDownloader
         
         private void ShouldCrawlSegments()
         {
-            Console.WriteLine("Most of the coubs has additional segment metadata. Should those be downloaded too? " +
-                              "(it will slow down initial URL crawling).");
-            Console.Write("Type Y for yes or N for no (then press enter): ");
-            var answer = Console.ReadLine()?.ToLower();
-            if (answer == "y" || answer == "yes")
+            _crawlSegments = _configuration.DownloadSegments;
+            if (_crawlSegments)
             {
-                _crawlSegments = true;
-                Console.WriteLine($"Segments for crawled coubs will be stored in the file called {Constants.SegmentsFileName}\n");
-            }
-            else
-            {
-                Console.WriteLine("Segments won't be downloaded.\n");
+                Console.WriteLine($"Based on configuration, segments will be downloaded. The file will be called {Constants.SegmentsFileName}\n");
             }
         }
 
@@ -97,9 +97,9 @@ namespace CoubDownloader
             }
 
             var urlsCount = File.ReadLines(urlsPath).Count();
-            Console.WriteLine($"Found URL list for '{dir}' with {urlsCount} links!");
-            Console.WriteLine("Download the list again to get newest changes? Original list will be deleted, but already downloaded coubs will remain unchanged.");
-            Console.Write("Type Y for yes or N for no (then press enter): ");
+            ConsoleEx.WriteLineColor($"[Found URL list for '{dir}' with {urlsCount} links!]", ConsoleColor.Yellow);
+            ConsoleEx.WriteLineColor("[Download the list again to get newest changes]? Original list will be deleted, but already downloaded coubs will remain unchanged.", ConsoleColor.Green);
+            ConsoleEx.WriteColor("Type [Y] for yes or [N] for no (then press enter): ", ConsoleColor.Red);
             var answer = Console.ReadLine()?.ToLower();
             if (answer == "y" || answer == "yes")
             {
@@ -132,7 +132,7 @@ namespace CoubDownloader
             {
                 var url = $"https://coub.com/api/v2/timeline/likes?order_by=date&page={{0}}&per_page={PageLimit}";
                 var totalLikes = GetTotalLikes(token);
-                Console.WriteLine($"Estimated {totalLikes} liked coubs to download.");
+                ConsoleEx.WriteLineColor($"[Estimated {totalLikes} liked coubs to download.]", ConsoleColor.Yellow);
                 var totalPages = CalculateNumberOfPages(totalLikes);
                 DownloadLinks(url, dir, token, totalPages);
             }
@@ -170,7 +170,7 @@ namespace CoubDownloader
             {
                 var url = $"https://coub.com/api/v2/timeline/favourites?order_by=date&page={{0}}&per_page={PageLimit}";
                 var totalBookmarks = GetTotalBookmarks(token);
-                Console.WriteLine($"Estimated {totalBookmarks} bookmarked coubs to download.");
+                ConsoleEx.WriteLineColor($"[Estimated {totalBookmarks} bookmarked coubs to download.]", ConsoleColor.White);
                 var totalPages = CalculateNumberOfPages(totalBookmarks);
                 DownloadLinks(url, dir, token, totalPages);
             }
@@ -187,7 +187,7 @@ namespace CoubDownloader
             }
         }
 
-        private static int GetTotalLikes(string token)
+        private int GetTotalLikes(string token)
         {
             var json = DownloadJson("https://coub.com/api/v2/users/me", token);
             dynamic data = JObject.Parse(json);
@@ -195,7 +195,7 @@ namespace CoubDownloader
             return int.Parse(data.likes_count.ToString());
         }
         
-        private static int GetTotalBookmarks(string token)
+        private int GetTotalBookmarks(string token)
         {
             var json = DownloadJson("https://coub.com/api/v2/users/me", token);
             dynamic data = JObject.Parse(json);
@@ -211,8 +211,8 @@ namespace CoubDownloader
                 return _usersAccessToken;
             }
             
-            Console.WriteLine("Write/paste your access token. Read README if you don't know how to get it.");
-            Console.Write("Access Token: ");
+            ConsoleEx.WriteLineColor("[Enter/paste your access token]. Read README if you don't know how to get it.", ConsoleColor.Green);
+            ConsoleEx.WriteColor("[Access Token]: ", ConsoleColor.Green);
             var token = Console.ReadLine();
             token = token?.Replace("remember_token=", "").Trim();
 
@@ -230,7 +230,7 @@ namespace CoubDownloader
         
         private void DownloadLinks(string baseUrl, string dir, string token = null, int? totalPages = null)
         {
-            Console.WriteLine($"Starting gathering links for '{dir}'...");
+            ConsoleEx.WriteLineColor($"[Starting gathering links for '{dir}'...]", ConsoleColor.Yellow);
             var links = GetLinks(baseUrl, 1, token, totalPages);
     
             var rawMetaDataPath = GetDataPath(dir, Constants.RawMetaDataFileName);
@@ -292,9 +292,9 @@ namespace CoubDownloader
             }
         }
 
-        private static string DownloadJson(string url, string token = null)
+        private string DownloadJson(string url, string token = null)
         {
-            Thread.Sleep(Constants.WaitBetweenDownloads * 1000);
+            Thread.Sleep((int)_configuration.WaitTime * 1000);
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.UserAgent = UserAgent.GetRandomAgent();
             
@@ -400,7 +400,7 @@ namespace CoubDownloader
             if (downloadedData.Count == 0)
             {
                 // Nothing was downloaded, probably reached end of pages
-                Console.WriteLine("Reached last item, skipping the rest of the pages... gathering results...");
+                ConsoleEx.WriteLineColor("[Reached last item, skipping the rest of the pages... gathering results...]", ConsoleColor.Yellow);
                 return downloadedData;
             }
             
@@ -410,7 +410,7 @@ namespace CoubDownloader
             }
             else
             {
-                Console.WriteLine("Reached last page... gathering results...");
+                ConsoleEx.WriteLineColor("[Reached last page... gathering results...]", ConsoleColor.Yellow);
             }
 
             return downloadedData;

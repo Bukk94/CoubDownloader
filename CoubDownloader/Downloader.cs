@@ -1,14 +1,29 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using CoubDownloader.Configurations;
+using CoubDownloader.Extensions;
 
 namespace CoubDownloader
 {
     public class Downloader
     {
         private const string DownloadedArchive = "downloaded.txt";
+        private readonly Configuration _configuration;
         private string coubsDir = Path.Combine(Environment.CurrentDirectory, Constants.CoubDataDir);
 
+        public Downloader(Configuration configuration)
+        {
+            _configuration = configuration;
+
+            if (!string.IsNullOrWhiteSpace(_configuration.OutputFolderPath))
+            {
+                // Overwrite default path with user's one
+                coubsDir = Path.Combine(_configuration.OutputFolderPath, Constants.CoubDataDir);
+            }
+        }
+        
         public void DownloadCoubs(string infoPath, string[] dirs)
         {
             var directoriesToDownload = dirs.Any() ? dirs : Directory.GetDirectories(infoPath);
@@ -34,7 +49,7 @@ namespace CoubDownloader
         
         private void DownloadCoubsCategory(string dir)
         {
-            Console.WriteLine($"Starting download of '{dir}'...");
+            ConsoleEx.WriteLineColor($"[Starting download of '{dir}'...]", ConsoleColor.Yellow);
 
             EnsureInput(dir);
 
@@ -47,7 +62,7 @@ namespace CoubDownloader
                 var repostsList = $"{Constants.CoubInfoDir}\\{dir}\\{Constants.RepostUrlListFileName}";
                 if (File.Exists(repostsList))
                 {
-                    Console.WriteLine($"Starting download of '{dir}' reposts...");
+                    ConsoleEx.WriteLineColor($"[Starting download of '{dir}' reposts...]", ConsoleColor.Yellow);
                     
                     var repostsPath = $"{Constants.CoubDataDir}\\{dir}\\{Constants.RepostsDir}";
                     if (!Directory.Exists(repostsPath))
@@ -60,19 +75,54 @@ namespace CoubDownloader
                         $"{repostsPath}\\%id%_%title%");
                 }
                 
-                Console.WriteLine("DONE");
+                ConsoleEx.WriteLineColor("[DONE]", ConsoleColor.Blue);
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("Fatal error: " + ex);
+                Console.Error.WriteLine($"Fatal error: {ex}");
             }
         }
         
-        private static void ExecuteCommand(string inputList, string target)
+        private void ExecuteCommand(string inputList, string target)
         {
             Run.RunCommand(
-                $"python.exe -X utf8 coub_v2.py -l {inputList} -o \"{target}\" --use-archive {Constants.CoubInfoDir}\\{DownloadedArchive} --sleep {Constants.WaitBetweenDownloads}",
+                $"python.exe -X utf8 coub_v2.py " +
+                    $"-l {inputList} " +
+                    $"-o \"{GetOutputDirectory(target)}\" " +
+                    $"--use-archive {Constants.CoubInfoDir}\\{DownloadedArchive} " +
+                    $"--sleep {_configuration.WaitTime.ToString(CultureInfo.InvariantCulture)} " +
+                    $"--repeat {(_configuration.Loops <= 0 ? 1000 : _configuration.Loops)} " +
+                    $"{GetVideoSettings()} " +
+                    $"{ShouldKeepIndividualStreams()}",
                 Environment.CurrentDirectory);
+        }
+
+        private string GetVideoSettings()
+        {
+            return _configuration.VideoQuality switch
+            {
+                VideoQuality.Highest => "--bestvideo",
+                VideoQuality.Medium => "--mediumvideo",
+                VideoQuality.Low => "--worstvideo",
+                _ => ""
+            };
+        }
+
+        private string GetOutputDirectory(string target)
+        {
+            if (string.IsNullOrWhiteSpace(_configuration.OutputFolderPath))
+            {
+                return target;
+            }
+
+            // Ensure path exists
+            Directory.CreateDirectory(_configuration.OutputFolderPath);
+            return Path.Combine(_configuration.OutputFolderPath, target);
+        }
+
+        private string ShouldKeepIndividualStreams()
+        {
+            return _configuration.KeepAudioVideo ? "--keep" : "";
         }
         
         private string GetDownloadLocation(string dir)

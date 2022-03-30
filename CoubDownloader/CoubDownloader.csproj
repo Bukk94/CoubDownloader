@@ -6,8 +6,8 @@
         <ApplicationIcon>icon.ico</ApplicationIcon>
         <Company>BearSoft</Company>
         <Product>Coub Downloader</Product>
-        <AssemblyVersion>0.7</AssemblyVersion>
-        <FileVersion>0.7</FileVersion>
+        <AssemblyVersion>0.8</AssemblyVersion>
+        <FileVersion>0.8</FileVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,6 +19,10 @@
       <Content Include="coub_v2.py">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </Content>
+      <None Remove="Configurations\Configuration.json" />
+      <ContentWithTargetPath Include="Configurations\Configuration.json" TargetPath="%(Filename)%(Extension)">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </ContentWithTargetPath>
     </ItemGroup>
 
 </Project>

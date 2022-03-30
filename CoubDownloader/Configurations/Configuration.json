@@ -1,0 +1,43 @@
+﻿{
+  // Most of the Coubs has additional metadata called Segments. Should the segments be downloaded too? 
+  // Download time will be significantly increased.
+  // Allowed values: true / false
+  // Default: false
+  "DownloadSegments": false,
+  
+  // Number of coub looping
+  // Coub video will be looped N times or until audio ends
+  // Allowed values: Any positive number (1, 2, 3, 4...)
+  // Default: -1 (until audio ends)
+  "Loops": -1,
+  
+  // Number of seconds to wait between each download.
+  // Increasing this value will slow down downloads but helps avoiding detection on Coub API.
+  // Higher values (e.g. 3 seconds) will ensure you won't get banned when mass-downloading Coubs.
+  // Allowed values: Any positive number (seconds)
+  // Default: 2.5
+  "WaitTime": 2.5,
+  
+  // Coub's video quality. By default downloading the best available, but that can take up huge amount of space.
+  // This settings allows downloading highest (~900p), medium (~720p) and low (~360p) quality videos.
+  // Allowed values: Highest, Medium, Low
+  // Default: Highest
+  "VideoQuality": "Highest",
+
+  // Coubs are stored with Audio and Video separated, CoubDownloader is combining them into one video with audio.
+  // But both audio and video files must be downloaded and then they are removed after merging.
+  // Setting this options to true will create merged video and also keep original audio and video files.
+  // Allowed values: true / false
+  // Default: false
+  "KeepAudioVideo": false,
+  
+  // By default all Coubs are downloaded in the same folder where CoubDownloader.exe is.
+  // This settings allows you to redirect downloads to different folder or even to a different drive.
+  // To correctly set this path, you must:
+  //     1. Enter full path to a folder
+  //     2. Each backslash must be doubled (so instead \ write \\)
+  //     3. Path must ends with \\
+  // Example:   D:\\Downloads\\MyCoubs\\
+  // Default: ""
+  "OutputFolderPath": ""
+}

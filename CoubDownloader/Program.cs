@@ -1,21 +1,38 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using CoubDownloader.Configurations;
+using CoubDownloader.Extensions;
+using Newtonsoft.Json;
 
 namespace CoubDownloader
 {
     public class Program
     {
-        private const string Version = "0.7";
+        private const string Version = "0.8";
         
         public static void Main()
         {
-            Console.WriteLine($"[Version: {Version}]");
+            try
+            {
+                // This call is Windows specific. Try to set width to nicely match text, but if that fails it's no big deal.
+                Console.SetWindowSize(125, Console.WindowHeight);
+            } catch {}
+            ConsoleEx.WriteLineColor(@"[
+ ██████  ██████  ██    ██ ██████      ██████   ██████  ██     ██ ███    ██ ██       ██████   █████  ██████  ███████ ██████  
+██      ██    ██ ██    ██ ██   ██     ██   ██ ██    ██ ██     ██ ████   ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██ 
+██      ██    ██ ██    ██ ██████      ██   ██ ██    ██ ██  █  ██ ██ ██  ██ ██      ██    ██ ███████ ██   ██ █████   ██████  
+██      ██    ██ ██    ██ ██   ██     ██   ██ ██    ██ ██ ███ ██ ██  ██ ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██ 
+ ██████  ██████   ██████  ██████      ██████   ██████   ███ ███  ██   ████ ███████  ██████  ██   ██ ██████  ███████ ██   ██ 
+]", ConsoleColor.Blue);
+            Console.WriteLine($"[Version: {Version}]\n");
             
             try
             {
+                var configuration = LoadConfiguration();
+
                 var input = GetDownloadInput();
-                GetCoubs(input);
+                GetCoubs(input, configuration);
             }
             catch (Exception ex)
             {
@@ -30,22 +47,89 @@ namespace CoubDownloader
 
         private static string GetDownloadInput()
         {
-            Console.WriteLine("What do you want to download?");
+            ConsoleEx.WriteLineColor("[What do you want to download?]", ConsoleColor.Green);
             Console.WriteLine("You can download your liked coubs by typing liked, bookmarks or any channel by entering its username (not displayname!)");
             Console.WriteLine("You can download multiple channels, separated by comma.");
             Console.WriteLine("If you already have a list of URLs in correct format, leave input empty and just press enter.\n");
             Console.WriteLine("Input example: liked,bookmarks,channelone,redcoubhead,just.for.kicks");
             
-            Console.Write("Input: ");
+            ConsoleEx.WriteColor("[Input]: ", ConsoleColor.Green);
             var input = Console.ReadLine();
             
             return input?.ToLower().Trim();
         }
 
-        private static void GetCoubs(string input)
+        private static Configuration LoadConfiguration()
         {
-            var crawler = new Crawler();
-            var downloader = new Downloader();
+            var path = Path.Combine(Environment.CurrentDirectory, "Configuration.json");
+            if (!File.Exists(path))
+            {
+                // No configuration found, load default
+                Console.WriteLine("No configuration found, using default");
+                return Configuration.Default;
+            }
+
+            try
+            {
+                var hasErrorOrWarning = false; 
+                var defaultConfiguration = Configuration.Default;
+                
+                var configuration = JsonConvert.DeserializeObject<Configuration>(File.ReadAllText(path));
+                if (configuration == null)
+                {
+                    return defaultConfiguration;
+                }
+                
+                if (!string.IsNullOrWhiteSpace(configuration.OutputFolderPath))
+                {
+                    // If folder path is set, validate it
+                    if (!configuration.OutputFolderPath.EndsWith("\\") || // Path must end with slash
+                        configuration.OutputFolderPath.Contains("/")) // Path cannot contain forward slashes
+                    {
+                        ConsoleEx.WriteLineColor($"[Invalid {nameof(Configuration.OutputFolderPath)}, using default (same directory).]", ConsoleColor.Red);
+                        configuration.OutputFolderPath = defaultConfiguration.OutputFolderPath;
+                        hasErrorOrWarning = true;
+                    }
+                }
+
+                if (configuration.WaitTime < 0)
+                {
+                    ConsoleEx.WriteLineColor($"[Invalid {nameof(Configuration.WaitTime)} value! Cannot have negative time. Using default.]", ConsoleColor.Red);
+                    configuration.WaitTime = defaultConfiguration.WaitTime;
+                    hasErrorOrWarning = true;
+                }
+                else if (configuration.WaitTime == 0)
+                {
+                    ConsoleEx.WriteLineColor("[Warning] Wait time is set to 0 (no wait). This can result into temporal IP ban to Coub's website.", ConsoleColor.Yellow);
+                    hasErrorOrWarning = true;
+                }
+                else if (configuration.WaitTime > 120)
+                {
+                    ConsoleEx.WriteLineColor($"[Warning] Wait time is set to {configuration.WaitTime} (seconds). This will result into really slow downloading. Was this intentional?", ConsoleColor.Yellow);
+                    hasErrorOrWarning = true;
+                }
+
+                if (hasErrorOrWarning)
+                {
+                    // Add extra formatting line
+                    Console.WriteLine();
+                }
+                
+                return configuration;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error loading configuration!\n" + ex.Message);
+                Console.WriteLine("Loading default configuration...");
+                // Something went wrong, use defaults
+                return Configuration.Default;
+            }
+        }
+        
+        private static void GetCoubs(string input, Configuration configuration)
+        {
+            var crawler = new Crawler(configuration);
+            var downloader = new Downloader(configuration);
 
             var toDownload = input?.Split(",", StringSplitOptions.RemoveEmptyEntries)
                 .Select(x => x.Trim())

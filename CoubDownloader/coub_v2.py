@@ -92,10 +92,6 @@ class Options:
     # ONLY download reposts during channel downloads
     only_recoubs = False
 
-    # Show preview after each download with the given command
-    preview = False
-    preview_command = "mpv"
-
     # Only download video/audio stream
     # Can't be both true!
     a_only = False
@@ -344,10 +340,6 @@ Channel options:
   --no-recoubs           exclude recoubs during channel downloads
   --only-recoubs         only download recoubs during channel downloads
 
-Preview options:
-  --preview COMMAND      play finished coub via the given command
-  --no-preview           explicitly disable coub preview
-
 Misc. options:
   --audio-only           only download audio streams
   --video-only           only download video streams
@@ -400,7 +392,6 @@ def parse_cli():
                 "--sleep",
                 "--limit-num",
                 "--sort",
-                "--preview",
                 "--write-list",
                 "--use-archive",
                 "-o", "--output"]
@@ -466,6 +457,8 @@ def parse_cli():
                 opts.v_quality = -1
             elif opt in ("--worstvideo",):
                 opts.v_quality = 0
+            elif opt in ("--mediumvideo",):
+                opts.v_quality = 1
             elif opt in ("--bestaudio",):
                 opts.a_quality = -1
             elif opt in ("--worstaudio",):
@@ -483,12 +476,6 @@ def parse_cli():
                 opts.recoubs = False
             elif opt in ("--only-recoubs",):
                 opts.only_recoubs = True
-            # Preview options
-            elif opt in ("--preview",):
-                opts.preview = True
-                opts.preview_command = arg
-            elif opt in ("--no-preview",):
-                opts.preview = False
             # Misc options
             elif opt in ("--audio-only",):
                 opts.a_only = True
@@ -663,26 +650,8 @@ def exists(name):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def overwrite():
-    """Decide if existing coub should be overwritten"""
-    return False # Never overwrite
-    if opts.prompt_answer == "yes":
-        return True
-    elif opts.prompt_answer == "no":
-        return False
-    elif opts.prompt_answer == "prompt":
-        print("Overwrite file?")
-        print("1) yes")
-        print("2) no")
-        while True:
-            answer = input("#? ")
-            if answer == "1":
-                return True
-            if answer == "2":
-                return False
-    else:
-        err("Unknown prompt_answer in overwrite!")
-        clean()
-        sys.exit(err_stat['run'])
+    """For our use-case, never overwrite the file to allow skipping"""
+    return False
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -870,35 +839,12 @@ def merge(a_ext, name):
     subprocess.run(command)
 
     if not opts.keep:
-        os.remove(name + ".mp4")
+        os.remove(name + output_ext)
         os.remove(name + "." + a_ext)
-        
-    os.rename(tmp_name, name + output_ext)
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-def show_preview(a_ext, name):
-    """Play finished coub with the given command"""
-
-    # For normal downloads .mkv, unless error downloading audio
-    if os.path.exists(name + ".mkv"):
-        ext = ".mkv"
     else:
-        ext = ".mp4"
-    if opts.a_only:
-        ext = "." + a_ext
-    if opts.v_only:
-        ext = ".mp4"
-
-    try:
-        # Need to split command string into list for check_call
-        command = opts.preview_command.split(" ")
-        command.append(name + ext)
-        subprocess.check_call(command, stdout=subprocess.DEVNULL, \
-                                       stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError:
-        err("Error: Missing file, invalid command or user interrupt in show_preview!")
-        raise
+        os.replace(name + output_ext, name + "_raw" + output_ext)
+        
+    os.replace(tmp_name, name + output_ext)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -960,8 +906,13 @@ def main():
         try:
             v_link = v_list[opts.v_quality]
         except IndexError:
-            err("Error: Coub unavailable!")
-            continue
+            try:
+                msg("Warning: Target quality not found, tring to fallback to best available.")
+                v_link = v_list[-1]
+            except IndexError:
+                err("Error: Coub unavailable!")
+                continue
+
         try:
             a_link = a_list[opts.a_quality]
             # Audio can be MP3 (.mp3) or AAC (.m4a)
@@ -1003,13 +954,6 @@ def main():
         # Write downloaded coub to archive
         if opts.archive_file:
             write_archive(c_id)
-
-        # Preview downloaded coub
-        if opts.preview:
-            try:
-                show_preview(a_ext, name)
-            except subprocess.CalledProcessError:
-                pass
 
         # Clean workspace
         clean()

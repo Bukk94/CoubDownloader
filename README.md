@@ -1,7 +1,8 @@
 ﻿# Coub Downloader
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
-![version](https://img.shields.io/badge/version-0.7-blue)
+![version](https://img.shields.io/badge/version-0.8-blue)
+[![Donate](https://img.shields.io/badge/Donate-PayPal-red.svg)](https://paypal.me/Bukk94)
 
 This downloader is console application targeted for Windows users and 
 all fans of [Coub](http://www.coub.com).
@@ -20,13 +21,14 @@ For now, this downloader is able to download:
 * [How to install ffmpeg](#how-to-install-ffmpeg)
 * [How to run](#how-to-run)
     + [Username vs Display name](#username-vs-display-name)
+* [Configuration](#configuration)
+    + [Configuration Properties](#configuration-properties)
 * [Files structure](#files-structure)
 * [Understanding metadata](#understanding-metadata)
     + [Basic raw metadata](#basic-raw-metadata)
     + [Segments](#segments)
 * [How to find Access Token](#how-to-find-access-token)
-* [Credits](#credits)
-* [Known problems](#known-problems)
+* [Credit](#credit)
 * [Troubleshooting](#troubleshooting)
 
 ## How it works
@@ -93,6 +95,23 @@ My display name is `Bukk94`, but my username is `bukk9433113`.
 Username is often auto-generated (unless specified otherwise) with 
 8 or more characters, numbers, dots or dashes. Username can be
 found as part of the channel's URL address (e.g. `https://coub.com/bukk9433113`).
+
+## Configuration
+CoubDownload is meant to be as simple as possible. Although you can set
+some settings through downloader itself, it wasn't enough for more advanced users.
+For those users, there is `Configuration.json` file in the root directory.
+Using this file you can further modify final
+output of the downloader.
+
+You can open the file with any text editor (for example `notepad`).
+
+### Configuration properties
+* `DownloadSegments` - true/false if CoubDownloader should download additional metadata.
+* `Loops` - Number of loops for final video (by default until end of audio, but someone wants just one loop).
+* `WaitTime` - Number of seconds to wait between each download. This reduces Coub's server load and you can more easily avoid ban detection.
+* `VideoQuality` - By default, highest quality is downloaded, but you can download Medium (~720p) or Low (~360p) quality.
+* `KeepAudioVideo` - Each Coub consists of audio and video. They are both combined into final Coub. By default those files are removed, but you can choose to keep them.
+* `OutputFolderPath` - By default, all Coubs are downloaded into Root directory. You can change that and enter your own directory (e.g. on a different drive).
 
 ## Files structure
 * [Root]\Coubs-info\\[dir]
@@ -166,11 +185,16 @@ copy it to the tool when asked.
 
 ## Credit
 
-Downloader in python was written by [artemtar](https://github.com/artemtar/CoubDownloader).
-I forked his repo and made several adjustments to avoid common formatting issues
-and other minor problems.
+Python script was originally written by [artemtar](https://github.com/artemtar/CoubDownloader).
+I used his script as a base and made several adjustments to properly fit
+this CoubDownloader's usage and to avoid common issues and problems.
 
 ## Troubleshooting
 * **Problem**: Program closes right after opening
-  * **Solution**: This is caused by missing [.NET 5.0 runtime library](https://dotnet.microsoft.com/en-us/download/dotnet/5.0/runtime). 
+  + **Solution**: This is caused by missing [.NET 5.0 runtime library](https://dotnet.microsoft.com/en-us/download/dotnet/5.0/runtime). 
  Try installing the runtime library or downloading full version of the tool.
+* **Problem**: CoubDownloader cannot download coubs/lists and I can't access Coub websites anymore.
+  + **Solution**: That means you were temporarily IP banned from Coub's website (usually for 1 hour).
+  Don't panic, after some time you'll be able to access it again. 
+  This happens when you are mass downloading coubs within short interval.
+  Try opening `Configuration.json` file and increasing `WaitTime` to 3 or more seconds. 
