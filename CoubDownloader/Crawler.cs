@@ -132,7 +132,12 @@ namespace CoubDownloader
             {
                 var url = $"https://coub.com/api/v2/timeline/likes?order_by=date&page={{0}}&per_page={PageLimit}";
                 var totalLikes = GetTotalLikes(token);
-                ConsoleEx.WriteLineColor($"[Estimated {totalLikes} liked coubs to download.]", ConsoleColor.Yellow);
+                if (!_configuration.NsfwOnly)
+                {
+                    // We can't estimate number of NSFW coubs    
+                    ConsoleEx.WriteLineColor($"[Estimated {totalLikes} liked coubs to download.]", ConsoleColor.Yellow);
+                }
+                
                 var totalPages = CalculateNumberOfPages(totalLikes);
                 DownloadLinks(url, dir, token, totalPages);
             }
@@ -170,7 +175,12 @@ namespace CoubDownloader
             {
                 var url = $"https://coub.com/api/v2/timeline/favourites?order_by=date&page={{0}}&per_page={PageLimit}";
                 var totalBookmarks = GetTotalBookmarks(token);
-                ConsoleEx.WriteLineColor($"[Estimated {totalBookmarks} bookmarked coubs to download.]", ConsoleColor.White);
+                if (!_configuration.NsfwOnly)
+                {
+                    // We can't estimate number of NSFW coubs    
+                    ConsoleEx.WriteLineColor($"[Estimated {totalBookmarks} bookmarked coubs to download.]", ConsoleColor.Yellow);
+                }
+                
                 var totalPages = CalculateNumberOfPages(totalBookmarks);
                 DownloadLinks(url, dir, token, totalPages);
             }
@@ -231,6 +241,11 @@ namespace CoubDownloader
         private void DownloadLinks(string baseUrl, string dir, string token = null, int? totalPages = null)
         {
             ConsoleEx.WriteLineColor($"[Starting gathering links for '{dir}'...]", ConsoleColor.Yellow);
+            if (_configuration.NsfwOnly)
+            {
+                ConsoleEx.WriteLineColor($"[Downloading NSFW coubs ONLY!]", ConsoleColor.Magenta);    
+            }
+            
             var links = GetLinks(baseUrl, 1, token, totalPages);
     
             var rawMetaDataPath = GetDataPath(dir, Constants.RawMetaDataFileName);
@@ -330,6 +345,7 @@ namespace CoubDownloader
 
             var currentPage = data.page;
             var coubs = data.coubs;
+            var containsLinks = false;
             
             var downloadedData = new List<CoubDownloadResult>();
 
@@ -343,6 +359,7 @@ namespace CoubDownloader
                     tags.Add(tag.title.ToString());
                 }
 
+                // NSFW will be removed on June 27th 2022 
                 var isNsfw = (bool?)coub.not_safe_for_work ?? false;
                 string permalink = coub.permalink.ToString();
                 string title = coub.title.ToString();
@@ -394,10 +411,16 @@ namespace CoubDownloader
                     Segments = (permalink, segments)
                 };
 
-                downloadedData.Add(result);
+                if (!_configuration.NsfwOnly ||
+                    (_configuration.NsfwOnly && isNsfw))
+                {
+                    downloadedData.Add(result);
+                }
+
+                containsLinks = true;
             }
 
-            if (downloadedData.Count == 0)
+            if (!containsLinks)
             {
                 // Nothing was downloaded, probably reached end of pages
                 ConsoleEx.WriteLineColor("[Reached last item, skipping the rest of the pages... gathering results...]", ConsoleColor.Yellow);

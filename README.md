@@ -112,6 +112,7 @@ You can open the file with any text editor (for example `notepad`).
 * `VideoQuality` - By default, highest quality is downloaded, but you can download Medium (~720p) or Low (~360p) quality.
 * `KeepAudioVideo` - Each Coub consists of audio and video. They are both combined into final Coub. By default those files are removed, but you can choose to keep them.
 * `OutputFolderPath` - By default, all Coubs are downloaded into Root directory. You can change that and enter your own directory (e.g. on a different drive).
+* `NsfwOnly` - true/false if CoubDownloader should download only NSFW coubs or all of them. NOTE that Coub will permanently remove all NSFW coubs on **June 27th 2022**, and this option will stop working (as there will be nothing to download).
 
 ## Files structure
 * [Root]\Coubs-info\\[dir]

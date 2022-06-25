@@ -9,7 +9,7 @@ namespace CoubDownloader
 {
     public class Program
     {
-        private const string Version = "0.8";
+        private const string Version = "0.9";
         
         public static void Main()
         {
@@ -52,7 +52,7 @@ namespace CoubDownloader
             Console.WriteLine("You can download multiple channels, separated by comma.");
             Console.WriteLine("If you already have a list of URLs in correct format, leave input empty and just press enter.\n");
             Console.WriteLine("Input example: liked,bookmarks,channelone,redcoubhead,just.for.kicks");
-            
+
             ConsoleEx.WriteColor("[Input]: ", ConsoleColor.Green);
             var input = Console.ReadLine();
             
@@ -135,6 +135,23 @@ namespace CoubDownloader
                 .Select(x => x.Trim())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToArray() ?? Array.Empty<string>();
+            
+            // NSFW coubs should be gone after June 27th, so check if user is trying to download them after this date
+            if (configuration.NsfwOnly &&
+               DateTime.Now > new DateTime(2022, 6, 28))
+            {
+                // Configuration contains NSFW only option but 
+                ConsoleEx.WriteLineColor("[NSFW ONLY option is enabled, but today is past June 27th 2022. All NSFW coubs are probably gone. Do you want to still proceed?]", ConsoleColor.Red);
+                ConsoleEx.WriteColor("Type [Y] for yes or [N] for no (then press enter): ", ConsoleColor.Red);
+                var answer = Console.ReadLine()?.ToLower();
+                if (answer != "y" && 
+                    answer != "yes")
+                {
+                    // Used decided not to proceed, exit the program
+                    ConsoleEx.WriteLineColor("Open [Configuration.json] file and set [\"NsfwOnly\": false]", ConsoleColor.Yellow);
+                    return;
+                }
+            }
             
             if (!toDownload.Any())
             {

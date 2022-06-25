@@ -13,6 +13,8 @@
         public bool KeepAudioVideo { get; set; }
 
         public string OutputFolderPath { get; set; }
+
+        public bool NsfwOnly { get; set; }
         
         public static Configuration Default => new()
         {
@@ -21,7 +23,8 @@
             WaitTime = 2.5f, // By default 2.5 seconds,
             VideoQuality = VideoQuality.Highest,
             KeepAudioVideo = false,
-            OutputFolderPath = null
+            OutputFolderPath = null,
+            NsfwOnly = false
         };
     }
 }

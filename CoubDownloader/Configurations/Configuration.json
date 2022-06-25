@@ -39,5 +39,13 @@
   //     3. Path must ends with \\
   // Example:   D:\\Downloads\\MyCoubs\\
   // Default: ""
-  "OutputFolderPath": ""
+  "OutputFolderPath": "",
+
+  // This option allows downloading only NSFW coubs. If set to true, CoubDownloader will skip all normal coubs and 
+  // will download only coubs marked as NSFW.
+  // NOTE that Coub is planning to permanently remove all NSFW coubs by June 27th 2022. So after this date this option
+  // will stop working and you will be forced to set it back to default value (false).
+  // Allowed values: true / false
+  // Default: false
+  "NsfwOnly": false
 }
