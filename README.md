@@ -1,7 +1,7 @@
 ﻿# Coub Downloader
 
 [![MIT License](https://img.shields.io/apm/l/atomic-design-ui.svg?)](https://github.com/tterb/atomic-design-ui/blob/master/LICENSEs)
-![version](https://img.shields.io/badge/version-0.8-blue)
+![version](https://img.shields.io/badge/version-0.9-blue)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-red.svg)](https://paypal.me/Bukk94)
 
 This downloader is console application targeted for Windows users and 
