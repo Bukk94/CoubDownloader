@@ -67,9 +67,44 @@ namespace CoubDownloader
             {
                 return;
             }
+
+            if (!VerifyIfChannelExists(channel))
+            {
+                ConsoleEx.WriteLineColor($"[Channel with name '{channel}' does not exist.]", ConsoleColor.Yellow);
+                return;
+            }
             
             var url = "https://coub.com/api/v2/timeline/channel/"+ channel + $"?page={{0}}&per_page={PageLimit}";
             DownloadLinks(url, channel);
+        }
+
+        private static bool VerifyIfChannelExists(string channel)
+        {
+            var urlToCheck = $"https://coub.com/{channel}";
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(urlToCheck);
+                request.Method = "HEAD";
+                request.UserAgent = UserAgent.GetRandomAgent();
+                var response = (HttpWebResponse)request.GetResponse();
+                var result = response.StatusCode == HttpStatusCode.OK;
+                response.Close();
+
+                return result;
+            }
+            catch (WebException webException)
+            {
+                var statusCode = (webException.Response as HttpWebResponse)?.StatusCode;
+                if (statusCode == HttpStatusCode.NotFound)
+                {
+                    // If channel is not found, return correct value
+                    return false;
+                }
+
+                // If there is some other error, let it go up and stop crawling
+                throw;
+            }
         }
 
         private string GetDataPath(string dir, string filename)
@@ -338,7 +373,17 @@ namespace CoubDownloader
             }
 
             var url = string.Format(baseUrl, page);
-            var json = DownloadJson(url, token);
+
+            string json;
+            try
+            {
+                json = DownloadJson(url, token);
+            }
+            catch
+            {
+                ConsoleEx.WriteLineColor($"[Failed to download coub with URL: {url}]", ConsoleColor.Red);
+                return new List<CoubDownloadResult>();
+            }
 
             dynamic data = JObject.Parse(json);
             var totalPages = totalPagesToDownload ?? data.total_pages; // Sometimes paging info is not always right
