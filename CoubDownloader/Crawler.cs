@@ -234,18 +234,18 @@ namespace CoubDownloader
 
         private int GetTotalLikes(string token)
         {
-            var json = DownloadJson("https://coub.com/api/v2/users/me", token);
+            var json = DownloadJson("https://coub.com/api/v2/timeline/likes?all=true&per_page=1", token);
             dynamic data = JObject.Parse(json);
             
-            return int.Parse(data.likes_count.ToString());
+            return int.Parse(data.total_pages.ToString());
         }
         
         private int GetTotalBookmarks(string token)
         {
-            var json = DownloadJson("https://coub.com/api/v2/users/me", token);
+            var json = DownloadJson("https://coub.com/api/v2/timeline/favourites?per_page=1", token);
             dynamic data = JObject.Parse(json);
             
-            return int.Parse(data.favourites_count.ToString());
+            return int.Parse(data.total_pages.ToString());
         }
         
         private string GetAccessToken()
