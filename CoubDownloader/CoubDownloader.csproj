@@ -6,8 +6,9 @@
         <ApplicationIcon>icon.ico</ApplicationIcon>
         <Company>BearSoft</Company>
         <Product>Coub Downloader</Product>
-        <AssemblyVersion>0.11</AssemblyVersion>
-        <FileVersion>0.11</FileVersion>
+        <AssemblyVersion>0.12</AssemblyVersion>
+        <FileVersion>0.12</FileVersion>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

@@ -1,8 +1,15 @@
 ﻿# Coub Downloader
 
-[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Bukk94/CoubDownloader/blob/master/LICENSE)
-![version](https://img.shields.io/badge/version-0.11-blue)
-[![Donate](https://img.shields.io/badge/Donate-PayPal-red.svg)](https://paypal.me/Bukk94)
+<p align="center">
+    <a href="https://www.microsoft.com/net"><img src="https://img.shields.io/badge/-.NET%208.0-blueviolet" style="max-height: 300px;"></a>
+    <img src="https://img.shields.io/badge/version-0.12-blue" style="max-height: 300px;">
+    <a href="https://github.com/Bukk94/KickLib/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" style="max-height: 300px;"></a>
+</p>
+
+<p align="center">
+  <a href='https://ko-fi.com/bukk94' target='_blank'>
+  <img height='30' style='border:0;height:38px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' />
+</a>
 
 This downloader is console application targeted for Windows users and 
 all fans of [Coub](http://www.coub.com).
@@ -59,12 +66,14 @@ during input insert nothing (just hit enter to continue) or insert name
 of the folder (in this case `MyList`).
 
 ## Requirements
+
 No installation or additional download needed if you'll download `full` 
 version of the Downloader in the [Releases](https://github.com/Bukk94/CoubDownloader/releases) section.
 
 Otherwise it depends on:
 * ffmpeg
 * Python 3.6 and above (included in all release packages)
+* .NET 8.0 runtime
 
 ## How to install ffmpeg
 
@@ -81,6 +90,7 @@ If you save ffmpeg into different folder than `C:\ffmpeg`, don't forget to
 modify the command in CMD accordingly to match actual `\bin` directory.
 
 ## How to run
+
 * Download [latest release package](https://github.com/Bukk94/CoubDownloader/releases) (already contain portable Python)
 * Make sure you have ffmpeg installed
 * Run `CoubDownloader.exe`
@@ -88,6 +98,7 @@ modify the command in CMD accordingly to match actual `\bin` directory.
   * You can download multiple channels at once, separated by comma (e.g. `liked,bookmarks,coub.channel`)
 
 ### Username vs Display name
+
 If you want to download specific channel, you must enter channel's username.
 This can be confusing as username is not same thing as Display name. 
 My display name is `Bukk94`, but my username is `bukk9433113`.
@@ -97,6 +108,7 @@ Username is often auto-generated (unless specified otherwise) with
 found as part of the channel's URL address (e.g. `https://coub.com/bukk9433113`).
 
 ## Configuration
+
 CoubDownload is meant to be as simple as possible. Although you can set
 some settings through downloader itself, it wasn't enough for more advanced users.
 For those users, there is `Configuration.json` file in the root directory.
@@ -106,15 +118,18 @@ output of the downloader.
 You can open the file with any text editor (for example `notepad`).
 
 ### Configuration properties
+
 * `DownloadSegments` - true/false if CoubDownloader should download additional metadata.
 * `Loops` - Number of loops for final video (by default until end of audio, but someone wants just one loop).
 * `WaitTime` - Number of seconds to wait between each download. This reduces Coub's server load and you can more easily avoid ban detection.
 * `VideoQuality` - By default, highest quality is downloaded, but you can download Medium (~720p) or Low (~360p) quality.
+* `Ordering` - Coub ordering during download. By default, sorting from newest. You can change it to oldest, from most likes, or most views.
 * `KeepAudioVideo` - Each Coub consists of audio and video. They are both combined into final Coub. By default those files are removed, but you can choose to keep them.
 * `OutputFolderPath` - By default, all Coubs are downloaded into Root directory. You can change that and enter your own directory (e.g. on a different drive).
 * `NsfwOnly` - true/false if CoubDownloader should download only NSFW coubs or all of them. NOTE that Coub will permanently remove all NSFW coubs on **June 27th 2022**, and this option will stop working (as there will be nothing to download).
 
 ## Files structure
+
 * [Root]\Coubs-info\\[dir]
   * Contains URLs to download as well as some metadata information like coub's
     original name and tags. Each category has its own folder
@@ -124,13 +139,16 @@ You can open the file with any text editor (for example `notepad`).
     * Channel reposted coubs
 
 ## Understanding metadata
+
 ### Basic raw metadata
+
 Metadata are JSON files containing detail information about each coub.
 Within those metadata you can find information like Coub's category,
 views/likes/dislikes count, tags, size, audio/video URLs with different qualities,
 if coub is NSFW, banned, age restricted, cropped, and many many more.
 
 ### Segments
+
 Special metadata type are segments. They
 contain similar information like metadata. But in addition to that
 they contain raw video (without COUB watermark) as well as exact audio
@@ -142,36 +160,29 @@ by linked state/progress. I assume that generation is triggered by
 hitting correct API endpoint on /segments.
 
 ## How to find Access Token
+
+Access Token is required for downloading coubs, that are private/related to your account (liked / bookmarked coubs).
 There are several ways to obtaining your Access Token.
 
 **Option 1:**
 1. Log into your Coub account
-2. Go to your [likes page](https://coub.com/likes)
-3. Next the URL address, you'll find a small lock icon
-
-   ![guide](CoubDownloader/Img/Guide_3.png)
-
-4. After clicking on the lock, a small window appears. Select `Cookies`:
-
-   ![guide](CoubDownloader/Img/Guide_4.png)
-
-5. New window will pop out. Select `coub.com` and then `Cookies` folder:
-
-   ![guide](CoubDownloader/Img/Guide_5.png)
-
-6. In this list, find item called `remember_token`
-
-   ![guide](CoubDownloader/Img/Guide_6.png)
-
-7. Click on this value and it should display details
-8. You should see long set of numbers and letters, this is your Access Token, 
+2. Go to any Coub page (e.g. [likes page](https://coub.com/likes))
+3. Right click on the page and select `Inspect` (or press F12 / open developer console)
+4. Go to `Application` tab (number 1 in picture) - if you don't see this tab, click the arrows.
+5. On the left side, find `Cookies` and click on it (number 2 in picture)
+6. Cookies should contain single entry called `https://coub.com` - click on it
+7. In this list, find item called `remember_token` (number 3 in picture)
+8. Click on this value and it will display its details at the bottom of the screen (number 4 in picture)
+9. You should see long set of numbers and letters - this is your Access Token, 
  copy it to the tool when asked. 
+
+![guide](CoubDownloader/Img/Guide_Cookies.png)
 
 **Option 2:**
 
 1. Log into your Coub account
 2. Go to your [likes page](https://coub.com/likes)
-3. Open developer console (press F12 if using Google Chrome)
+3. Right click on the page and select `Inspect` (or press F12 / open developer console)
 4. Go to Network tab (number 1 in picture)
 5. Reload the page (refresh / press F5)
 6. You should see a lot of stuff going on in the Network tab. Wait for page to fully load
@@ -191,8 +202,9 @@ I used his script as a base and made several adjustments to properly fit
 this CoubDownloader's usage and to avoid common issues and problems.
 
 ## Troubleshooting
+
 * **Problem**: Program closes right after opening
-  + **Solution**: This is caused by missing [.NET 5.0 runtime library](https://dotnet.microsoft.com/en-us/download/dotnet/5.0/runtime). 
+  + **Solution**: This is probably caused by missing [.NET 8.0 runtime library](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/runtime). 
  Try installing the runtime library or downloading full version of the tool.
 * **Problem**: CoubDownloader cannot download coubs/lists and I can't access Coub websites anymore.
   + **Solution**: That means you were temporarily IP banned from Coub's website (usually for 1 hour).

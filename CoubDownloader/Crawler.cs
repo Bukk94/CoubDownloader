@@ -15,6 +15,7 @@ namespace CoubDownloader
     public class Crawler
     {
         private readonly Configuration _configuration;
+        private Pager _pager = new();
         private string _usersAccessToken;
         private bool _crawlSegments;
         private const int PageLimit = 25;
@@ -73,9 +74,12 @@ namespace CoubDownloader
                 ConsoleEx.WriteLineColor($"[Channel with name '{channel}' does not exist.]", ConsoleColor.Yellow);
                 return;
             }
+
+            var sort = GetSorting();
+            var url = "https://coub.com/api/v2/timeline/channel/"+ channel + $"?page={{0}}&order_by={sort}&per_page={PageLimit}";
             
-            var url = "https://coub.com/api/v2/timeline/channel/"+ channel + $"?page={{0}}&per_page={PageLimit}";
-            DownloadLinks(url, channel);
+            dynamic data = JObject.Parse(DownloadJson(url));
+            DownloadLinks(url, channel, null, data.total_pages);
         }
 
         private static bool VerifyIfChannelExists(string channel)
@@ -146,6 +150,18 @@ namespace CoubDownloader
             return true;
         }
 
+        private string GetSorting()
+        {
+            return _configuration.Ordering switch
+            {
+                CoubOrder.Oldest => "oldest",
+                CoubOrder.LikesCount => "likes_count",
+                CoubOrder.ViewsCount => "views_count",
+                CoubOrder.Newest => "date",
+                _ => "date"
+            };
+        }
+        
         private void DownloadLikedCoubs()
         {
             var dir = LikedCategory;
@@ -165,7 +181,8 @@ namespace CoubDownloader
             
             try
             {
-                var url = $"https://coub.com/api/v2/timeline/likes?order_by=date&page={{0}}&per_page={PageLimit}";
+                var sort = GetSorting();
+                var url = $"https://coub.com/api/v2/timeline/likes?order_by={sort}&page={{0}}&per_page={PageLimit}";
                 var totalLikes = GetTotalLikes(token);
                 if (!_configuration.NsfwOnly)
                 {
@@ -208,7 +225,8 @@ namespace CoubDownloader
             
             try
             {
-                var url = $"https://coub.com/api/v2/timeline/favourites?order_by=date&page={{0}}&per_page={PageLimit}";
+                var sort = GetSorting();
+                var url = $"https://coub.com/api/v2/timeline/favourites?order_by={sort}&page={{0}}&per_page={PageLimit}";
                 var totalBookmarks = GetTotalBookmarks(token);
                 if (!_configuration.NsfwOnly)
                 {
@@ -273,15 +291,39 @@ namespace CoubDownloader
                 : 1; // Otherwise go one by one
         }
         
-        private void DownloadLinks(string baseUrl, string dir, string token = null, int? totalPages = null)
+        private static Pager GetPager()
+        {
+            ConsoleEx.WriteColor("[Number of coubs to download]. Type -1 for all, or number of coubs to download: ", ConsoleColor.Green);
+            
+            var answer = Console.ReadLine();
+            if (int.TryParse(answer, out var result) && result > 0)
+            {
+                return new Pager
+                {
+                    Take = result
+                };
+            }
+            
+            return new Pager();
+        }
+        
+        private void DownloadLinks(string baseUrl, string dir, string token = null, int totalPages = 1)
         {
             ConsoleEx.WriteLineColor($"[Starting gathering links for '{dir}'...]", ConsoleColor.Yellow);
             if (_configuration.NsfwOnly)
             {
                 ConsoleEx.WriteLineColor($"[Downloading NSFW coubs ONLY!]", ConsoleColor.Magenta);    
             }
+
+            _pager = GetPager();
             
-            var links = GetLinks(baseUrl, 1, token, totalPages);
+            if (totalPages > 999)
+            {
+                ConsoleEx.WriteLineColor($"[Possibly reaching over Coub API limits!] Coub has limit of 999 pages, but currently attempting to crawl {totalPages} pages. [Not all results might be downloaded!]", ConsoleColor.Yellow);
+            }
+
+            var startPage = 1;
+            var links = GetLinks(baseUrl, startPage, token, totalPages);
     
             var rawMetaDataPath = GetDataPath(dir, Constants.RawMetaDataFileName);
             var formattedMetaDataPath = GetDataPath(dir, Constants.MetaDataFileName);
@@ -388,12 +430,22 @@ namespace CoubDownloader
             dynamic data = JObject.Parse(json);
             var totalPages = totalPagesToDownload ?? data.total_pages; // Sometimes paging info is not always right
 
-            var currentPage = data.page;
+            var currentPage = (int)data.page;
             var coubs = data.coubs;
             var containsLinks = false;
             
             var downloadedData = new List<CoubDownloadResult>();
 
+            if (page != currentPage)
+            {
+                var message = page >= 1000
+                    ? $"[Reached Coub API limits!] Coub is unable to fetch data over page 999. Skipping the rest of the pages on page {currentPage} at URL: {url}."
+                    : $"[Coub API cursor is not matching expected page!] Expected page: {page}, Received page: {currentPage} at URL: {url}. Skipping the rest of the pages.";
+                
+                ConsoleEx.WriteLineColor(message, ConsoleColor.Red);
+                return downloadedData;
+            }
+            
             foreach (var coub in coubs)
             {
                 var tags = new List<string>();
@@ -460,8 +512,15 @@ namespace CoubDownloader
                     (_configuration.NsfwOnly && isNsfw))
                 {
                     downloadedData.Add(result);
+                    _pager.Use();
                 }
 
+                if (!_pager.HasNext)
+                {
+                    ConsoleEx.WriteLineColor($"[Reached pager target ({_pager.Take})... gathering results...]", ConsoleColor.Yellow);
+                    return downloadedData;
+                }
+                
                 containsLinks = true;
             }
 

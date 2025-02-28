@@ -9,6 +9,8 @@
         public double WaitTime { get; set; }
 
         public VideoQuality VideoQuality { get; set; }
+        
+        public CoubOrder Ordering { get; set; }
 
         public bool KeepAudioVideo { get; set; }
 
@@ -22,6 +24,7 @@
             Loops = -1, // No limit
             WaitTime = 2.5f, // By default 2.5 seconds,
             VideoQuality = VideoQuality.Highest,
+            Ordering = CoubOrder.Newest,
             KeepAudioVideo = false,
             OutputFolderPath = null,
             NsfwOnly = false

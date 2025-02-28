@@ -23,6 +23,11 @@
   // Allowed values: Highest, Medium, Low
   // Default: Highest
   "VideoQuality": "Highest",
+  
+  // Default Coub ordering during downloading.
+  // Allowed values: Newest, LikesCount, ViewsCount, Oldest
+  // Default: Newest (newest first)
+  "Ordering": "Newest",
 
   // Coubs are stored with Audio and Video separated, CoubDownloader is combining them into one video with audio.
   // But both audio and video files must be downloaded and then they are removed after merging.
