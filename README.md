@@ -2,7 +2,7 @@
 
 <p align="center">
     <a href="https://www.microsoft.com/net"><img src="https://img.shields.io/badge/-.NET%208.0-blueviolet" style="max-height: 300px;"></a>
-    <img src="https://img.shields.io/badge/version-0.12-blue" style="max-height: 300px;">
+    <img src="https://img.shields.io/badge/version-1.0.13-blue" style="max-height: 300px;">
     <a href="https://github.com/Bukk94/KickLib/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" style="max-height: 300px;"></a>
 </p>
 

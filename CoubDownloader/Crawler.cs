@@ -79,7 +79,7 @@ namespace CoubDownloader
             var url = "https://coub.com/api/v2/timeline/channel/"+ channel + $"?page={{0}}&order_by={sort}&per_page={PageLimit}";
             
             dynamic data = JObject.Parse(DownloadJson(url));
-            DownloadLinks(url, channel, null, data.total_pages);
+            DownloadLinks(url, channel, null, (int)data.total_pages);
         }
 
         private static bool VerifyIfChannelExists(string channel)
