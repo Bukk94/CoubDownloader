@@ -17,7 +17,9 @@
         public string OutputFolderPath { get; set; }
 
         public bool NsfwOnly { get; set; }
-        
+
+        public string ProxyUrl { get; set; }
+
         public static Configuration Default => new()
         {
             DownloadSegments = false,
@@ -27,7 +29,8 @@
             Ordering = CoubOrder.Newest,
             KeepAudioVideo = false,
             OutputFolderPath = null,
-            NsfwOnly = false
+            NsfwOnly = false,
+            ProxyUrl = null
         };
     }
 }

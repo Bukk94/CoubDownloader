@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using CoubDownloader.Configurations;
 using CoubDownloader.Extensions;
 using Newtonsoft.Json;
@@ -9,14 +10,15 @@ namespace CoubDownloader
 {
     public class Program
     {
-        private const string Version = "0.12";
+        private static readonly string Version =
+            Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
         
         public static void Main()
         {
             try
             {
                 // This call is Windows specific. Try to set width to nicely match text, but if that fails it's no big deal.
-                Console.SetWindowSize(125, Console.WindowHeight);
+                Console.SetWindowSize(130, Console.WindowHeight);
             } catch {}
             ConsoleEx.WriteLineColor(@"[
  ██████  ██████  ██    ██ ██████      ██████   ██████  ██     ██ ███    ██ ██       ██████   █████  ██████  ███████ ██████  
@@ -109,12 +111,28 @@ namespace CoubDownloader
                     hasErrorOrWarning = true;
                 }
 
+                if (!string.IsNullOrWhiteSpace(configuration.ProxyUrl))
+                {
+                    if (!Uri.TryCreate(configuration.ProxyUrl, UriKind.Absolute, out var proxyUri) ||
+                        (proxyUri.Scheme != Uri.UriSchemeHttp && proxyUri.Scheme != Uri.UriSchemeHttps))
+                    {
+                        ConsoleEx.WriteLineColor($"[Invalid {nameof(Configuration.ProxyUrl)} '{configuration.ProxyUrl}', only http:// or https:// proxies are supported. Proxy will not be used.]", ConsoleColor.Red);
+                        configuration.ProxyUrl = null;
+                        hasErrorOrWarning = true;
+                    }
+                    else
+                    {
+                        ConsoleEx.WriteLineColor($"[Proxy enabled: {configuration.ProxyUrl}]", ConsoleColor.Yellow);
+                        hasErrorOrWarning = true;
+                    }
+                }
+
                 if (hasErrorOrWarning)
                 {
                     // Add extra formatting line
                     Console.WriteLine();
                 }
-                
+
                 return configuration;
             }
             catch (Exception ex)

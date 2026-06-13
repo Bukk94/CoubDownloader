@@ -2,7 +2,7 @@
 
 <p align="center">
     <a href="https://www.microsoft.com/net"><img src="https://img.shields.io/badge/-.NET%208.0-blueviolet" style="max-height: 300px;"></a>
-    <img src="https://img.shields.io/badge/version-1.0.13-blue" style="max-height: 300px;">
+    <img src="https://img.shields.io/badge/version-1.0.14-blue" style="max-height: 300px;">
     <a href="https://github.com/Bukk94/KickLib/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" style="max-height: 300px;"></a>
 </p>
 
@@ -127,6 +127,7 @@ You can open the file with any text editor (for example `notepad`).
 * `KeepAudioVideo` - Each Coub consists of audio and video. They are both combined into final Coub. By default those files are removed, but you can choose to keep them.
 * `OutputFolderPath` - By default, all Coubs are downloaded into Root directory. You can change that and enter your own directory (e.g. on a different drive).
 * `NsfwOnly` - true/false if CoubDownloader should download only NSFW coubs or all of them. NOTE that Coub will permanently remove all NSFW coubs on **June 27th 2022**, and this option will stop working (as there will be nothing to download).
+* `ProxyUrl` - HTTP/HTTPS proxy URL to route all requests through (e.g. `http://proxy.example.com:8080` or `http://user:password@proxy.example.com:8080`). Useful if your IP is being blocked by Coub. Applies to both the link-crawling phase and the download phase.
 
 ## Files structure
 
@@ -210,4 +211,5 @@ this CoubDownloader's usage and to avoid common issues and problems.
   + **Solution**: That means you were temporarily IP banned from Coub's website (usually for 1 hour).
   Don't panic, after some time you'll be able to access it again. 
   This happens when you are mass downloading coubs within short interval.
-  Try opening `Configuration.json` file and increasing `WaitTime` to 3 or more seconds. 
+  Try opening `Configuration.json` file and increasing `WaitTime` to 3 or more seconds.
+  If blocks persist, you can also set `ProxyUrl` in `Configuration.json` to route traffic through a different IP address.

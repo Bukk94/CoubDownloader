@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
@@ -6,7 +7,7 @@ namespace CoubDownloader
 {
     public static class Run
     {
-        public static void RunCommand(string commandToRun, string workingDirectory = null)
+        public static void RunCommand(string commandToRun, string workingDirectory = null, Dictionary<string, string> environment = null)
         {
             if (string.IsNullOrEmpty(workingDirectory))
             {
@@ -21,6 +22,14 @@ namespace CoubDownloader
                 WorkingDirectory = workingDirectory,
                 Arguments = "/k"
             };
+
+            if (environment != null)
+            {
+                foreach (var kvp in environment)
+                {
+                    processStartInfo.EnvironmentVariables[kvp.Key] = kvp.Value;
+                }
+            }
 
             var process = Process.Start(processStartInfo);
 

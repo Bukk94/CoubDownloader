@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -94,7 +95,22 @@ namespace CoubDownloader
                     $"--repeat {(_configuration.Loops <= 0 ? 1000 : _configuration.Loops)} " +
                     $"{GetVideoSettings()} " +
                     $"{ShouldKeepIndividualStreams()}",
-                Environment.CurrentDirectory);
+                Environment.CurrentDirectory,
+                GetProxyEnvironment());
+        }
+
+        private Dictionary<string, string> GetProxyEnvironment()
+        {
+            if (string.IsNullOrWhiteSpace(_configuration.ProxyUrl))
+            {
+                return null;
+            }
+            
+            return new Dictionary<string, string>
+            {
+                ["HTTP_PROXY"] = _configuration.ProxyUrl,
+                ["HTTPS_PROXY"] = _configuration.ProxyUrl
+            };
         }
 
         private string GetVideoSettings()

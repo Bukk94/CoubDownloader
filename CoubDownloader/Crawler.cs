@@ -82,7 +82,7 @@ namespace CoubDownloader
             DownloadLinks(url, channel, null, (int)data.total_pages);
         }
 
-        private static bool VerifyIfChannelExists(string channel)
+        private bool VerifyIfChannelExists(string channel)
         {
             var urlToCheck = $"https://coub.com/{channel}";
 
@@ -91,6 +91,11 @@ namespace CoubDownloader
                 var request = (HttpWebRequest)WebRequest.Create(urlToCheck);
                 request.Method = "HEAD";
                 request.UserAgent = UserAgent.GetRandomAgent();
+                if (!string.IsNullOrWhiteSpace(_configuration.ProxyUrl))
+                {
+                    request.Proxy = new WebProxy(_configuration.ProxyUrl);
+                }
+                
                 var response = (HttpWebResponse)request.GetResponse();
                 var result = response.StatusCode == HttpStatusCode.OK;
                 response.Close();
@@ -389,7 +394,12 @@ namespace CoubDownloader
             Thread.Sleep((int)_configuration.WaitTime * 1000);
             var request = (HttpWebRequest)WebRequest.Create(url);
             request.UserAgent = UserAgent.GetRandomAgent();
-            
+
+            if (!string.IsNullOrWhiteSpace(_configuration.ProxyUrl))
+            {
+                request.Proxy = new WebProxy(_configuration.ProxyUrl);
+            }
+
             if (!string.IsNullOrWhiteSpace(token))
             {
                 // Add cookies header with access token to retrieve user-specific data

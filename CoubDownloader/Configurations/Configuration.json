@@ -52,5 +52,11 @@
   // will stop working and you will be forced to set it back to default value (false).
   // Allowed values: true / false
   // Default: false
-  "NsfwOnly": false
+  "NsfwOnly": false,
+
+  // If you want to use a proxy server, you can set its URL here.
+  // Only HTTP(S) proxies are supported and the scheme is required.
+  // Example: http://127.0.0.1:8080
+  // Default: null
+  "ProxyUrl": null
 }
