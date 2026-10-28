@@ -10,6 +10,6 @@
         public const string RepostUrlListFileName = "url_list_reposts.txt";
         public const string MetaDataFileName = "metadata.txt";
         public const string RawMetaDataFileName = "raw_metadata.json";
-        public const string SegmentsFileName = "segments.json";
+        public const string MediaListFileName = "media.json";
     }
 }

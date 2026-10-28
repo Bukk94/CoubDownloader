@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json.Linq;
 using System.Linq;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using CoubDownloader.Configurations;
 using CoubDownloader.Extensions;
 using Newtonsoft.Json;
@@ -15,119 +17,98 @@ namespace CoubDownloader
     public class Crawler
     {
         private readonly Configuration _configuration;
+        private readonly HttpClient _http;
         private Pager _pager = new();
         private string _usersAccessToken;
-        private bool _crawlSegments;
-        private const int PageLimit = 25;
         private const string LikedCategory = "liked";
         private const string BookmarksCategory = "bookmarks";
         private const string BaseUrl = "https://coub.com/view/";
+        private const string TimelineUrl = "https://coub.com/api/coub-site/timeline";
+        private const string TokenCookieName = "sb-gotrue-auth-token";
 
         private const string DataFormat =
             "{0}\n" +
             "\tTitle: {1}\n" +
-            "\tTags (encoded): {2}\n" +
-            "\tTags: {3}\n" +
-            "\tType: {4}\n" +
-            "\tCreated At: {5}\n" +
-            "\tDuration: {6}\n" +
-            "\tNSFW: {7}\n" +
-            "\tMade by: {8}\n";
+            "\tTags: {2}\n" +
+            "\tCreated At: {3}\n" +
+            "\tDuration: {4}\n" +
+            "\tNSFW: {5}\n" +
+            "\tMade by: {6}\n";
 
         public Crawler(Configuration configuration)
         {
             _configuration = configuration;
+            _http = CoubHttp.Create(configuration);
         }
-        
+
         public string InfoPath => Path.Combine(Environment.CurrentDirectory, Constants.CoubInfoDir);
-        
-        public void CrawlUrls(string[] categories)
+
+        public async Task CrawlUrlsAsync(string[] categories)
         {
-            ShouldCrawlSegments();
-            
+            if (_configuration.DownloadSegments)
+            {
+                ConsoleEx.WriteLineColor("[Segments are no longer available on Coub, DownloadSegments is ignored.]", ConsoleColor.Yellow);
+            }
+
             foreach (var category in categories)
             {
                 if (category == LikedCategory)
                 {
-                    DownloadLikedCoubs();
+                    await DownloadScopedCoubsAsync(LikedCategory, "likes");
                 }
                 else if (category == BookmarksCategory)
                 {
-                    DownloadBookmarkedCoubs();
+                    await DownloadScopedCoubsAsync(BookmarksCategory, "bookmarks");
                 }
                 else
                 {
-                    DownloadChannelCoubs(category);
+                    await DownloadChannelCoubsAsync(category);
                 }
             }
         }
-        
-        private void DownloadChannelCoubs(string channel)
+
+        private async Task DownloadChannelCoubsAsync(string channel)
         {
             if (ShouldSkipDownloaded(channel))
             {
                 return;
             }
 
-            if (!VerifyIfChannelExists(channel))
+            var channelId = await GetChannelIdAsync(channel);
+            if (channelId == null)
             {
                 ConsoleEx.WriteLineColor($"[Channel with name '{channel}' does not exist.]", ConsoleColor.Yellow);
                 return;
             }
 
-            var sort = GetSorting();
-            var url = "https://coub.com/api/v2/timeline/channel/"+ channel + $"?page={{0}}&order_by={sort}&per_page={PageLimit}";
-            
-            dynamic data = JObject.Parse(DownloadJson(url));
-            DownloadLinks(url, channel, null, (int)data.total_pages);
+            var query = GetTimelineQuery("channel", $"&channel_id={channelId}");
+            await DownloadLinksAsync(query, channel, null, channel);
         }
 
-        private bool VerifyIfChannelExists(string channel)
+        private async Task<string> GetChannelIdAsync(string channel)
         {
-            var urlToCheck = $"https://coub.com/{channel}";
-
-            try
+            using var response = await _http.GetAsync($"https://coub.com/{channel}");
+            if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                var request = (HttpWebRequest)WebRequest.Create(urlToCheck);
-                request.Method = "HEAD";
-                request.UserAgent = UserAgent.GetRandomAgent();
-                if (!string.IsNullOrWhiteSpace(_configuration.ProxyUrl))
-                {
-                    request.Proxy = new WebProxy(_configuration.ProxyUrl);
-                }
-                
-                var response = (HttpWebResponse)request.GetResponse();
-                var result = response.StatusCode == HttpStatusCode.OK;
-                response.Close();
-
-                return result;
+                return null;
             }
-            catch (WebException webException)
-            {
-                var statusCode = (webException.Response as HttpWebResponse)?.StatusCode;
-                if (statusCode == HttpStatusCode.NotFound)
-                {
-                    // If channel is not found, return correct value
-                    return false;
-                }
 
-                // If there is some other error, let it go up and stop crawling
-                throw;
-            }
+            // If there is some other error, let it go up and stop crawling
+            response.EnsureSuccessStatusCode();
+
+            // Channel data is embedded in the page as escaped JSON
+            var html = (await response.Content.ReadAsStringAsync()).Replace("\\\"", "\"");
+            var match = Regex.Match(
+                html,
+                $"\"channelId\":\"([0-9a-f-]{{36}})\",\"permalink\":\"{Regex.Escape(channel)}\"",
+                RegexOptions.IgnoreCase);
+
+            return match.Success ? match.Groups[1].Value : null;
         }
 
         private string GetDataPath(string dir, string filename)
         {
             return Path.Combine(Path.Combine(InfoPath, dir), filename);
-        }
-        
-        private void ShouldCrawlSegments()
-        {
-            _crawlSegments = _configuration.DownloadSegments;
-            if (_crawlSegments)
-            {
-                Console.WriteLine($"Based on configuration, segments will be downloaded. The file will be called {Constants.SegmentsFileName}\n");
-            }
         }
 
         private bool ShouldSkipDownloaded(string dir)
@@ -155,21 +136,22 @@ namespace CoubDownloader
             return true;
         }
 
-        private string GetSorting()
+        private string GetTimelineQuery(string defaultKind, string extraParameters)
         {
-            return _configuration.Ordering switch
+            var (kind, order) = _configuration.Ordering switch
             {
-                CoubOrder.Oldest => "oldest",
-                CoubOrder.LikesCount => "likes_count",
-                CoubOrder.ViewsCount => "views_count",
-                CoubOrder.Newest => "date",
-                _ => "date"
+                CoubOrder.Oldest => ("hot", "oldest"),
+                CoubOrder.LikesCount => ("hot", "likes_count"),
+                CoubOrder.ViewsCount => ("hot", "views_count"),
+                _ => (defaultKind, null)
             };
+
+            var query = $"kind={kind}{extraParameters}";
+            return order == null ? query : $"{query}&order={order}";
         }
-        
-        private void DownloadLikedCoubs()
+
+        private async Task DownloadScopedCoubsAsync(string dir, string scope)
         {
-            var dir = LikedCategory;
             if (ShouldSkipDownloaded(dir))
             {
                 return;
@@ -183,94 +165,18 @@ namespace CoubDownloader
                                         + "like 'liked' coubs. Skipping download of " + dir);
                 return;
             }
-            
+
             try
             {
-                var sort = GetSorting();
-                var url = $"https://coub.com/api/v2/timeline/likes?order_by={sort}&page={{0}}&per_page={PageLimit}";
-                var totalLikes = GetTotalLikes(token);
-                if (!_configuration.NsfwOnly)
-                {
-                    // We can't estimate number of NSFW coubs    
-                    ConsoleEx.WriteLineColor($"[Estimated {totalLikes} liked coubs to download.]", ConsoleColor.Yellow);
-                }
-                
-                var totalPages = CalculateNumberOfPages(totalLikes);
-                DownloadLinks(url, dir, token, totalPages);
+                var query = GetTimelineQuery("hot", $"&scope={scope}");
+                await DownloadLinksAsync(query, dir, token, null);
             }
             catch (Exception ex)
             {
-                if (ex.Message.Contains("Forbidden"))
-                {
-                    Console.Error.WriteLine("Invalid access token!");
-                }
-                else
-                {
-                    Console.Error.WriteLine("Unexpected error: " + ex);
-                }
-            }
-        }
-        
-        private void DownloadBookmarkedCoubs()
-        {
-            var dir = BookmarksCategory;
-            if (ShouldSkipDownloaded(dir))
-            {
-                return;
-            }
-
-            var token = GetAccessToken();
-
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                Console.Error.WriteLine("Invalid token! Valid token is necessary to download user-specific categories "
-                                        + "like 'liked' coubs. Skipping download of " + dir);
-                return;
-            }
-            
-            try
-            {
-                var sort = GetSorting();
-                var url = $"https://coub.com/api/v2/timeline/favourites?order_by={sort}&page={{0}}&per_page={PageLimit}";
-                var totalBookmarks = GetTotalBookmarks(token);
-                if (!_configuration.NsfwOnly)
-                {
-                    // We can't estimate number of NSFW coubs    
-                    ConsoleEx.WriteLineColor($"[Estimated {totalBookmarks} bookmarked coubs to download.]", ConsoleColor.Yellow);
-                }
-                
-                var totalPages = CalculateNumberOfPages(totalBookmarks);
-                DownloadLinks(url, dir, token, totalPages);
-            }
-            catch (Exception ex)
-            {
-                if (ex.Message.Contains("Forbidden"))
-                {
-                    Console.Error.WriteLine("Invalid access token!");
-                }
-                else
-                {
-                    Console.Error.WriteLine("Unexpected error: " + ex);
-                }
+                Console.Error.WriteLine("Unexpected error: " + ex);
             }
         }
 
-        private int GetTotalLikes(string token)
-        {
-            var json = DownloadJson("https://coub.com/api/v2/timeline/likes?all=true&per_page=1", token);
-            dynamic data = JObject.Parse(json);
-            
-            return int.Parse(data.total_pages.ToString());
-        }
-        
-        private int GetTotalBookmarks(string token)
-        {
-            var json = DownloadJson("https://coub.com/api/v2/timeline/favourites?per_page=1", token);
-            dynamic data = JObject.Parse(json);
-            
-            return int.Parse(data.total_pages.ToString());
-        }
-        
         private string GetAccessToken()
         {
             if (!string.IsNullOrWhiteSpace(_usersAccessToken))
@@ -278,28 +184,28 @@ namespace CoubDownloader
                 // If user already passed token, return it
                 return _usersAccessToken;
             }
-            
-            ConsoleEx.WriteLineColor("[Enter/paste your access token]. Read README if you don't know how to get it.", ConsoleColor.Green);
+
+            ConsoleEx.WriteLineColor($"[Enter/paste your access token (value of '{TokenCookieName}' cookie)]. Read README if you don't know how to get it.", ConsoleColor.Green);
             ConsoleEx.WriteColor("[Access Token]: ", ConsoleColor.Green);
-            var token = Console.ReadLine();
-            token = token?.Replace("remember_token=", "").Trim();
+            var token = Console.ReadLine()?.Trim();
+
+            // Allow pasting whole cookie string or 'name=value'
+            var cookiePrefix = TokenCookieName + "=";
+            var start = token?.IndexOf(cookiePrefix, StringComparison.Ordinal) ?? -1;
+            if (start >= 0)
+            {
+                token = token.Substring(start + cookiePrefix.Length).Split(';')[0].Trim();
+            }
 
             _usersAccessToken = token;
-            
+
             return token;
         }
 
-        private static int CalculateNumberOfPages(int total)
-        {
-            return total > PageLimit ? 
-                (int)Math.Ceiling((double)total / PageLimit) // If number of items is over the limit, batch it by PageLimit 
-                : 1; // Otherwise go one by one
-        }
-        
         private static Pager GetPager()
         {
             ConsoleEx.WriteColor("[Number of coubs to download]. Type -1 for all, or number of coubs to download: ", ConsoleColor.Green);
-            
+
             var answer = Console.ReadLine();
             if (int.TryParse(answer, out var result) && result > 0)
             {
@@ -308,32 +214,26 @@ namespace CoubDownloader
                     Take = result
                 };
             }
-            
+
             return new Pager();
         }
-        
-        private void DownloadLinks(string baseUrl, string dir, string token = null, int totalPages = 1)
+
+        private async Task DownloadLinksAsync(string query, string dir, string token, string channel)
         {
             ConsoleEx.WriteLineColor($"[Starting gathering links for '{dir}'...]", ConsoleColor.Yellow);
             if (_configuration.NsfwOnly)
             {
-                ConsoleEx.WriteLineColor($"[Downloading NSFW coubs ONLY!]", ConsoleColor.Magenta);    
+                ConsoleEx.WriteLineColor($"[Downloading NSFW coubs ONLY!]", ConsoleColor.Magenta);
             }
 
             _pager = GetPager();
-            
-            if (totalPages > 999)
-            {
-                ConsoleEx.WriteLineColor($"[Possibly reaching over Coub API limits!] Coub has limit of 999 pages, but currently attempting to crawl {totalPages} pages. [Not all results might be downloaded!]", ConsoleColor.Yellow);
-            }
 
-            var startPage = 1;
-            var links = GetLinks(baseUrl, startPage, token, totalPages);
-    
+            var links = await GetLinksAsync(query, token, channel);
+
             var rawMetaDataPath = GetDataPath(dir, Constants.RawMetaDataFileName);
             var formattedMetaDataPath = GetDataPath(dir, Constants.MetaDataFileName);
             var urlsPath = GetDataPath(dir, Constants.UrlListFileName);
-            var segmentsPath = GetDataPath(dir, Constants.SegmentsFileName);
+            var mediaPath = GetDataPath(dir, Constants.MediaListFileName);
 
             if (!Directory.Exists(InfoPath))
             {
@@ -345,12 +245,12 @@ namespace CoubDownloader
             {
                 Directory.CreateDirectory(subDirectory);
             }
-            
+
             // Save URLs
             var linksList = links.Where(x => !x.IsRepost).Select(x => x.Link).ToList();
             Console.WriteLine($"Saving {linksList.Count} crawled URLs...");
             var urlLinks = string.Join("\n", linksList);
-            File.WriteAllText(urlsPath, urlLinks, Encoding.UTF8);
+            await File.WriteAllTextAsync(urlsPath, urlLinks, Encoding.UTF8);
 
             // Save reposts
             if (links.Any(x => x.IsRepost))
@@ -358,199 +258,136 @@ namespace CoubDownloader
                 Console.WriteLine($"Saving {links.Count(x => x.IsRepost)} repost URLs...");
                 var repostsPath = GetDataPath(dir, Constants.RepostUrlListFileName);
                 var repostLinks = string.Join("\n", links.Where(x => x.IsRepost).Select(x => x.RepostUrl));
-                File.WriteAllText(repostsPath, repostLinks, Encoding.UTF8);
+                await File.WriteAllTextAsync(repostsPath, repostLinks, Encoding.UTF8);
             }
-            
+
+            // Save media links used by downloader
+            Console.WriteLine("Saving media links...");
+            await File.WriteAllTextAsync(mediaPath, JsonConvert.SerializeObject(links.Select(x => x.Media), Formatting.Indented), Encoding.UTF8);
+
             // Save raw metadata
             Console.WriteLine("Saving metadata...");
             var metaData = string.Join(",\n", links.Select(x => x.RawData));
-            File.WriteAllText(rawMetaDataPath, metaData, Encoding.UTF8);
-            
+            await File.WriteAllTextAsync(rawMetaDataPath, metaData, Encoding.UTF8);
+
             // Save formatted metadata
             Console.WriteLine("Saving metadata details...");
             var formattedLinks = string.Join("\n", links.Select(x => x.FormattedData));
-            File.WriteAllText(formattedMetaDataPath, formattedLinks, Encoding.UTF8);
-            
-            if (_crawlSegments)
-            {
-                // Save segments
-                Console.WriteLine("Saving coub segments...");
-
-                var data = links
-                    .Where(x => !string.IsNullOrWhiteSpace(x.Segments.segments))
-                    .Select(x => new
-                {
-                    permalink = x.Segments.id,
-                    data = JToken.Parse(x.Segments.segments)
-                }).ToArray();
-
-                var serializedSegments = JsonConvert.SerializeObject(data, Formatting.Indented);
-                File.WriteAllText(segmentsPath, serializedSegments, Encoding.UTF8);
-            }
+            await File.WriteAllTextAsync(formattedMetaDataPath, formattedLinks, Encoding.UTF8);
         }
 
-        private string DownloadJson(string url, string token = null)
+        private async Task<string> DownloadJsonAsync(string url, string token = null)
         {
-            Thread.Sleep((int)_configuration.WaitTime * 1000);
-            var request = (HttpWebRequest)WebRequest.Create(url);
-            request.UserAgent = UserAgent.GetRandomAgent();
-
-            if (!string.IsNullOrWhiteSpace(_configuration.ProxyUrl))
-            {
-                request.Proxy = new WebProxy(_configuration.ProxyUrl);
-            }
+            await Task.Delay((int)_configuration.WaitTime * 1000);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
 
             if (!string.IsNullOrWhiteSpace(token))
             {
                 // Add cookies header with access token to retrieve user-specific data
-                request.Headers["Cookie"] = $"remember_token={token}";
+                request.Headers.Add("Cookie", $"{TokenCookieName}={token}");
             }
 
-            var response = (HttpWebResponse)request.GetResponse();
+            using var response = await _http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
 
-            using var reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
-            
-            return reader.ReadToEnd();
+            return await response.Content.ReadAsStringAsync();
         }
-        
-        private List<CoubDownloadResult> GetLinks(string baseUrl, int page, string token, int? totalPagesToDownload)
+
+        private async Task<List<CoubDownloadResult>> GetLinksAsync(string query, string token, string channel)
         {
-            if (totalPagesToDownload.HasValue)
-            {
-                Console.WriteLine($"Crawling page {page} out of {totalPagesToDownload}");
-            }
-            else
-            {
-                Console.WriteLine($"Crawling page {page}");
-            }
-
-            var url = string.Format(baseUrl, page);
-
-            string json;
-            try
-            {
-                json = DownloadJson(url, token);
-            }
-            catch
-            {
-                ConsoleEx.WriteLineColor($"[Failed to download coub with URL: {url}]", ConsoleColor.Red);
-                return new List<CoubDownloadResult>();
-            }
-
-            dynamic data = JObject.Parse(json);
-            var totalPages = totalPagesToDownload ?? data.total_pages; // Sometimes paging info is not always right
-
-            var currentPage = (int)data.page;
-            var coubs = data.coubs;
-            var containsLinks = false;
-            
             var downloadedData = new List<CoubDownloadResult>();
+            var cursor = string.Empty;
+            var page = 0;
 
-            if (page != currentPage)
+            while (true)
             {
-                var message = page >= 1000
-                    ? $"[Reached Coub API limits!] Coub is unable to fetch data over page 999. Skipping the rest of the pages on page {currentPage} at URL: {url}."
-                    : $"[Coub API cursor is not matching expected page!] Expected page: {page}, Received page: {currentPage} at URL: {url}. Skipping the rest of the pages.";
-                
-                ConsoleEx.WriteLineColor(message, ConsoleColor.Red);
-                return downloadedData;
-            }
-            
-            foreach (var coub in coubs)
-            {
-                var tags = new List<string>();
-                var tagsEncoded = new List<string>();
-                foreach (var tag in coub.tags)
-                {
-                    tagsEncoded.Add(tag.value.ToString());
-                    tags.Add(tag.title.ToString());
-                }
+                page++;
+                Console.WriteLine($"Crawling page {page}");
 
-                // NSFW will be removed on June 27th 2022 
-                var isNsfw = (bool?)coub.not_safe_for_work ?? false;
-                string permalink = coub.permalink.ToString();
-                string title = coub.title.ToString();
-                var segments = string.Empty;
+                var url = $"{TimelineUrl}?{query}&cursor={Uri.EscapeDataString(cursor)}";
 
-                var repostUrl = string.Empty;
-                var isRepost = (bool)(coub.recoub_to.GetHashCode() != 0); // Working with JValue type, if hash is 0, it has no value
-                if (isRepost)
+                JObject data;
+                try
                 {
-                    repostUrl = BaseUrl + coub.recoub_to.permalink.ToString();
+                    var json = await DownloadJsonAsync(url, token);
+                    data = JObject.Parse(json);
                 }
-                
-                if (_crawlSegments)
+                catch (Exception ex)
                 {
-                    // For each coub download segments data
-                    try
-                    {
-                        segments = DownloadJson($"https://coub.com/api/v2/coubs/{permalink}/segments");
-                    }
-                    catch (Exception ex)
-                    {
-                        // A lot of recoubed videos don't have segments for some reason
-                        if (ex.Message.Contains("The remote server returned an error: (404) Not Found.") &&
-                            coub.type.ToString() != "Coub::Recoub")
-                        {
-                            Console.WriteLine($"Segments for coub '{permalink}' was not found.");
-                        }
-                    }
-                }
-                
-                var formatted = string.Format(DataFormat,
-                    BaseUrl + permalink,
-                    title.RemoveLinebreaks(),
-                    string.Join(",", tagsEncoded).RemoveLinebreaks(),
-                    string.Join(",", tags),
-                    coub.type,
-                    coub.created_at,
-                    coub.duration,
-                    isNsfw ? "Yes" : "No",
-                    coub.channel.permalink);
-                
-                var result = new CoubDownloadResult
-                {
-                    Link = BaseUrl + permalink,
-                    IsRepost = isRepost,
-                    RepostUrl = repostUrl,
-                    FormattedData = formatted.ToString(),
-                    RawData = coub.ToString(),
-                    Segments = (permalink, segments)
-                };
-
-                if (!_configuration.NsfwOnly ||
-                    (_configuration.NsfwOnly && isNsfw))
-                {
-                    downloadedData.Add(result);
-                    _pager.Use();
-                }
-
-                if (!_pager.HasNext)
-                {
-                    ConsoleEx.WriteLineColor($"[Reached pager target ({_pager.Take})... gathering results...]", ConsoleColor.Yellow);
+                    ConsoleEx.WriteLineColor($"[Failed to download page {page} with URL: {url}] {ex.Message}", ConsoleColor.Red);
                     return downloadedData;
                 }
-                
-                containsLinks = true;
-            }
 
-            if (!containsLinks)
-            {
-                // Nothing was downloaded, probably reached end of pages
-                ConsoleEx.WriteLineColor("[Reached last item, skipping the rest of the pages... gathering results...]", ConsoleColor.Yellow);
-                return downloadedData;
-            }
-            
-            if (currentPage != totalPages)
-            {
-                downloadedData.AddRange(GetLinks(baseUrl, ++page, token, (int?)totalPages));
-            }
-            else
-            {
-                ConsoleEx.WriteLineColor("[Reached last page... gathering results...]", ConsoleColor.Yellow);
-            }
+                var coubs = (JArray)data["items"];
+                if (page == 1 && coubs.Count == 0 && token != null)
+                {
+                    // Invalid or expired token is not an error, API just returns empty list
+                    ConsoleEx.WriteLineColor("[No coubs returned. Your access token might be invalid or expired.]", ConsoleColor.Yellow);
+                }
 
-            return downloadedData;
+                foreach (var coub in coubs)
+                {
+                    var tags = coub["tags"].Select(x => x.ToString()).ToList();
+                    var isNsfw = (bool?)coub["ageRestricted"] ?? false;
+                    var permalink = coub["permalink"].ToString();
+                    var title = coub["title"].ToString();
+
+                    // Channel timeline contains coubs from other channels only when they were reposted
+                    var madeBy = coub["channel"]["permalink"].ToString();
+                    var isRepost = channel != null && !string.Equals(madeBy, channel, StringComparison.OrdinalIgnoreCase);
+
+                    var formatted = string.Format(DataFormat,
+                        BaseUrl + permalink,
+                        title.RemoveLinebreaks(),
+                        string.Join(",", tags),
+                        coub["publishedAt"],
+                        coub["duration"],
+                        isNsfw ? "Yes" : "No",
+                        madeBy);
+
+                    var result = new CoubDownloadResult
+                    {
+                        Link = BaseUrl + permalink,
+                        IsRepost = isRepost,
+                        RepostUrl = isRepost ? BaseUrl + permalink : string.Empty,
+                        FormattedData = formatted,
+                        RawData = coub.ToString(),
+                        Media = new CoubMedia
+                        {
+                            Permalink = permalink,
+                            Title = title,
+                            IsRepost = isRepost,
+                            VideoHdUrl = (string)coub["videoHdUrl"],
+                            VideoSdUrl = (string)coub["videoSdUrl"],
+                            VideoLowUrl = (string)coub["videoLowUrl"],
+                            AudioUrl = (string)coub["audioUrl"],
+                            AudioMedUrl = (string)coub["audioMedUrl"]
+                        }
+                    };
+
+                    if (!_configuration.NsfwOnly ||
+                        (_configuration.NsfwOnly && isNsfw))
+                    {
+                        downloadedData.Add(result);
+                        _pager.Use();
+                    }
+
+                    if (!_pager.HasNext)
+                    {
+                        ConsoleEx.WriteLineColor($"[Reached pager target ({_pager.Take})... gathering results...]", ConsoleColor.Yellow);
+                        return downloadedData;
+                    }
+                }
+
+                var next = data["next"]?.ToString();
+                if (string.IsNullOrEmpty(next) || next == cursor)
+                {
+                    ConsoleEx.WriteLineColor("[Reached last page... gathering results...]", ConsoleColor.Yellow);
+                    return downloadedData;
+                }
+
+                cursor = next;
+            }
         }
     }
 }

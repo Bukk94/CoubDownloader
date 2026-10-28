@@ -20,10 +20,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="coub_v2.py" />
-      <Content Include="coub_v2.py">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </Content>
       <None Remove="Configurations\Configuration.json" />
       <ContentWithTargetPath Include="Configurations\Configuration.json" TargetPath="%(Filename)%(Extension)">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>

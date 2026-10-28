@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using CoubDownloader.Configurations;
 using CoubDownloader.Extensions;
 using Newtonsoft.Json;
@@ -13,7 +14,7 @@ namespace CoubDownloader
         private static readonly string Version =
             Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
         
-        public static void Main()
+        public static async Task Main()
         {
             try
             {
@@ -34,7 +35,7 @@ namespace CoubDownloader
                 var configuration = LoadConfiguration();
 
                 var input = GetDownloadInput();
-                GetCoubs(input, configuration);
+                await GetCoubsAsync(input, configuration);
             }
             catch (Exception ex)
             {
@@ -144,7 +145,7 @@ namespace CoubDownloader
             }
         }
         
-        private static void GetCoubs(string input, Configuration configuration)
+        private static async Task GetCoubsAsync(string input, Configuration configuration)
         {
             var crawler = new Crawler(configuration);
             var downloader = new Downloader(configuration);
@@ -177,10 +178,10 @@ namespace CoubDownloader
             }
             else
             {
-                crawler.CrawlUrls(toDownload);
+                await crawler.CrawlUrlsAsync(toDownload);
             }
-            
-            downloader.DownloadCoubs(crawler.InfoPath, toDownload);
+
+            await downloader.DownloadCoubsAsync(crawler.InfoPath, toDownload);
         }
     }
 }

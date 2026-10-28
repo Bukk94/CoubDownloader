@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 using CoubDownloader.Configurations;
 using CoubDownloader.Extensions;
+using Newtonsoft.Json;
 
 namespace CoubDownloader
 {
@@ -12,11 +15,13 @@ namespace CoubDownloader
     {
         private const string DownloadedArchive = "downloaded.txt";
         private readonly Configuration _configuration;
+        private readonly HttpClient _http;
         private string coubsDir = Path.Combine(Environment.CurrentDirectory, Constants.CoubDataDir);
 
         public Downloader(Configuration configuration)
         {
             _configuration = configuration;
+            _http = CoubHttp.Create(configuration);
 
             if (!string.IsNullOrWhiteSpace(_configuration.OutputFolderPath))
             {
@@ -24,11 +29,11 @@ namespace CoubDownloader
                 coubsDir = Path.Combine(_configuration.OutputFolderPath, Constants.CoubDataDir);
             }
         }
-        
-        public void DownloadCoubs(string infoPath, string[] dirs)
+
+        public async Task DownloadCoubsAsync(string infoPath, string[] dirs)
         {
             var directoriesToDownload = dirs.Any() ? dirs : Directory.GetDirectories(infoPath);
-            
+
             foreach (var directory in directoriesToDownload)
             {
                 var dir = new DirectoryInfo(directory).Name;
@@ -37,8 +42,8 @@ namespace CoubDownloader
                     Console.WriteLine($"No URL list for category '{dir}' found, skipping download...");
                     continue;
                 }
-                
-                DownloadCoubsCategory(dir);
+
+                await DownloadCoubsCategoryAsync(infoPath, dir);
             }
         }
 
@@ -47,35 +52,73 @@ namespace CoubDownloader
             var filename = Path.Combine(Path.Combine(path, dir), Constants.UrlListFileName);
             return File.Exists(filename);
         }
-        
-        private void DownloadCoubsCategory(string dir)
+
+        private async Task DownloadCoubsCategoryAsync(string infoPath, string dir)
         {
             ConsoleEx.WriteLineColor($"[Starting download of '{dir}'...]", ConsoleColor.Yellow);
 
-            EnsureInput(dir);
+            var mediaPath = Path.Combine(infoPath, dir, Constants.MediaListFileName);
+            if (!File.Exists(mediaPath))
+            {
+                ConsoleEx.WriteLineColor($"[No media list found for '{dir}'. URL lists from older versions cannot be downloaded, crawl this category again.]", ConsoleColor.Red);
+                return;
+            }
+
+            var hasFfmpeg = await HasFfmpegAsync();
+            if (!hasFfmpeg)
+            {
+                ConsoleEx.WriteLineColor("[ffmpeg was not found. Install it and make sure it is available in PATH.]", ConsoleColor.Red);
+                return;
+            }
 
             try
             {
-                ExecuteCommand(
-                    $"{Constants.CoubInfoDir}\\{dir}\\{Constants.UrlListFileName}",
-                    $"{Constants.CoubDataDir}\\{dir}\\%id%_%title%");
+                var coubs = JsonConvert.DeserializeObject<List<CoubMedia>>(await File.ReadAllTextAsync(mediaPath));
+                var archivePath = Path.Combine(infoPath, DownloadedArchive);
+                var archive = File.Exists(archivePath)
+                    ? new HashSet<string>(await File.ReadAllLinesAsync(archivePath))
+                    : new HashSet<string>();
 
-                var repostsList = $"{Constants.CoubInfoDir}\\{dir}\\{Constants.RepostUrlListFileName}";
-                if (File.Exists(repostsList))
+                var targetDir = GetDownloadLocation(dir);
+                var repostsDir = Path.Combine(targetDir, Constants.RepostsDir);
+                Directory.CreateDirectory(targetDir);
+                if (coubs.Any(x => x.IsRepost))
                 {
-                    ConsoleEx.WriteLineColor($"[Starting download of '{dir}' reposts...]", ConsoleColor.Yellow);
-                    
-                    var repostsPath = $"{Constants.CoubDataDir}\\{dir}\\{Constants.RepostsDir}";
-                    if (!Directory.Exists(repostsPath))
-                    {
-                        Directory.CreateDirectory(repostsPath);
-                    }
-                    
-                    ExecuteCommand(
-                        repostsList,
-                        $"{repostsPath}\\%id%_%title%");
+                    Directory.CreateDirectory(repostsDir);
                 }
-                
+
+                var count = 0;
+                foreach (var coub in coubs)
+                {
+                    count++;
+                    Console.WriteLine($"  {count} out of {coubs.Count} ({coub.Permalink})");
+
+                    if (archive.Contains(coub.Permalink))
+                    {
+                        Console.WriteLine("    Already downloaded, skipping...");
+                        continue;
+                    }
+
+                    try
+                    {
+                        var isDownloaded = await DownloadCoubAsync(coub, coub.IsRepost ? repostsDir : targetDir);
+                        if (!isDownloaded)
+                        {
+                            continue;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        ConsoleEx.WriteLineColor($"    [Failed to download coub '{coub.Permalink}']: {ex.Message}", ConsoleColor.Red);
+                        continue;
+                    }
+
+                    archive.Add(coub.Permalink);
+                    await File.AppendAllTextAsync(archivePath, coub.Permalink + "\n");
+
+                    await Task.Delay((int)(_configuration.WaitTime * 1000));
+                }
+
                 ConsoleEx.WriteLineColor("[DONE]", ConsoleColor.Blue);
             }
             catch (Exception ex)
@@ -83,90 +126,138 @@ namespace CoubDownloader
                 Console.Error.WriteLine($"Fatal error: {ex}");
             }
         }
-        
-        private void ExecuteCommand(string inputList, string target)
-        {
-            Run.RunCommand(
-                $"python.exe -X utf8 coub_v2.py " +
-                    $"-l {inputList} " +
-                    $"-o \"{GetOutputDirectory(target)}\" " +
-                    $"--use-archive {Constants.CoubInfoDir}\\{DownloadedArchive} " +
-                    $"--sleep {_configuration.WaitTime.ToString(CultureInfo.InvariantCulture)} " +
-                    $"--repeat {(_configuration.Loops <= 0 ? 1000 : _configuration.Loops)} " +
-                    $"{GetVideoSettings()} " +
-                    $"{ShouldKeepIndividualStreams()}",
-                Environment.CurrentDirectory,
-                GetProxyEnvironment());
-        }
 
-        private Dictionary<string, string> GetProxyEnvironment()
+        private async Task<bool> DownloadCoubAsync(CoubMedia coub, string targetDir)
         {
-            if (string.IsNullOrWhiteSpace(_configuration.ProxyUrl))
+            var videoUrl = GetVideoUrl(coub);
+            if (videoUrl == null)
             {
-                return null;
+                ConsoleEx.WriteLineColor("    [Coub has no video available]", ConsoleColor.Red);
+                return false;
             }
-            
-            return new Dictionary<string, string>
+
+            var name = Path.Combine(targetDir, $"{coub.Permalink}_{GetSafeName(coub.Title)}");
+            var videoPath = name + "_raw.mp4";
+            var audioPath = name + ".mp3";
+            var outputPath = name + ".mp4";
+
+            await DownloadFileAsync(videoUrl, videoPath);
+
+            var audioUrl = coub.AudioUrl ?? coub.AudioMedUrl;
+            var hasAudio = false;
+            if (audioUrl != null)
             {
-                ["HTTP_PROXY"] = _configuration.ProxyUrl,
-                ["HTTPS_PROXY"] = _configuration.ProxyUrl
-            };
+                try
+                {
+                    await DownloadFileAsync(audioUrl, audioPath);
+                    hasAudio = true;
+                }
+                catch (HttpRequestException)
+                {
+                    ConsoleEx.WriteLineColor("    [Audio is unavailable, saving video only]", ConsoleColor.Yellow);
+                }
+            }
+
+            if (!hasAudio)
+            {
+                File.Move(videoPath, outputPath, true);
+                return true;
+            }
+
+            await MergeAsync(videoPath, audioPath, outputPath);
+
+            if (!_configuration.KeepAudioVideo)
+            {
+                File.Delete(videoPath);
+                File.Delete(audioPath);
+            }
+
+            return true;
         }
 
-        private string GetVideoSettings()
+        private string GetVideoUrl(CoubMedia coub)
         {
             return _configuration.VideoQuality switch
             {
-                VideoQuality.Highest => "--bestvideo",
-                VideoQuality.Medium => "--mediumvideo",
-                VideoQuality.Low => "--worstvideo",
-                _ => ""
+                VideoQuality.Medium => coub.VideoSdUrl ?? coub.VideoLowUrl ?? coub.VideoHdUrl,
+                VideoQuality.Low => coub.VideoLowUrl ?? coub.VideoSdUrl ?? coub.VideoHdUrl,
+                _ => coub.VideoHdUrl ?? coub.VideoSdUrl ?? coub.VideoLowUrl
             };
         }
 
-        private string GetOutputDirectory(string target)
+        private static string GetSafeName(string title)
         {
-            if (string.IsNullOrWhiteSpace(_configuration.OutputFolderPath))
+            var name = string.Concat(title.RemoveLinebreaks().Select(x => Path.GetInvalidFileNameChars().Contains(x) ? '_' : x));
+            name = name.Length > 100 ? name.Substring(0, 100) : name;
+
+            return name.TrimEnd('.', ' ');
+        }
+
+        private async Task DownloadFileAsync(string url, string path)
+        {
+            using var response = await _http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            await using var source = await response.Content.ReadAsStreamAsync();
+            await using var target = File.Create(path);
+            await source.CopyToAsync(target);
+        }
+
+        private async Task MergeAsync(string videoPath, string audioPath, string outputPath)
+        {
+            // Loop video until audio ends (or for configured number of loops)
+            var loops = _configuration.Loops > 0 ? _configuration.Loops - 1 : -1;
+
+            await RunFfmpegAsync("-y", "-v", "error",
+                "-stream_loop", loops.ToString(), "-i", videoPath,
+                "-i", audioPath,
+                "-c", "copy", "-shortest", outputPath);
+        }
+
+        private static async Task<bool> HasFfmpegAsync()
+        {
+            try
             {
-                return target;
+                await RunFfmpegAsync("-version");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static async Task RunFfmpegAsync(params string[] arguments)
+        {
+            var startInfo = new ProcessStartInfo("ffmpeg")
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            foreach (var argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
             }
 
-            // Ensure path exists
-            Directory.CreateDirectory(_configuration.OutputFolderPath);
-            return Path.Combine(_configuration.OutputFolderPath, target);
+            using var process = Process.Start(startInfo);
+            // Both streams must be drained at the same time, otherwise ffmpeg can block on a full pipe
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+            await outputTask;
+            var error = await errorTask;
+
+            if (process.ExitCode != 0)
+            {
+                throw new Exception($"ffmpeg failed: {error}");
+            }
         }
 
-        private string ShouldKeepIndividualStreams()
-        {
-            return _configuration.KeepAudioVideo ? "--keep" : "";
-        }
-        
         private string GetDownloadLocation(string dir)
         {
             return Path.Combine(coubsDir, dir);
-        }
-
-        private void EnsureInput(string dir)
-        {
-            // coub_v2.py is creating temp list for data
-            // It might be left behind if something happens, clean that up before starting
-            var tmpList = Path.Combine(Environment.CurrentDirectory, "list.txt");
-            if (File.Exists(tmpList))
-            {
-                File.Delete(tmpList);
-            }
-            
-            // Main coub directory
-            if (!Directory.Exists(coubsDir))
-            {
-                Directory.CreateDirectory(coubsDir);
-            }
-
-            var targetDirectory = GetDownloadLocation(dir);
-            if (!Directory.Exists(targetDirectory))
-            {
-                Directory.CreateDirectory(targetDirectory);
-            }
         }
     }
 }
