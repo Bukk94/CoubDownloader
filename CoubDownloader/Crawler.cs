@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using CoubDownloader.Configurations;
 using CoubDownloader.Extensions;
 using CoubDownloader.Models;
+using CoubDownloader.Services;
 using Newtonsoft.Json;
 
 namespace CoubDownloader;
@@ -19,51 +20,90 @@ public class Crawler
 {
     private readonly Configuration _configuration;
     private readonly HttpClient _http;
+    private readonly AuthToken _authToken;
+    private readonly CustomLists _customLists;
     private Pager _pager = new();
-    private string _usersAuthToken;
-    private const string LikedCategory = "liked";
-    private const string BookmarksCategory = "bookmarks";
-    private const string BaseUrl = "https://coub.com/view/";
+    private const string CustomList = "custom";
     private const string TimelineUrl = "https://coub.com/api/coub-site/timeline";
-    private const string TokenCookieName = "sb-gotrue-auth-token";
-    private const string TokenPrefix = "base64-";
-    private const string RefreshUrl = "https://coub.com/foryou";
-    private const int RefreshMarginSeconds = 5;
 
-    private const string DataFormat =
-        "{0}\n" +
-        "\tTitle: {1}\n" +
-        "\tTags: {2}\n" +
-        "\tCreated At: {3}\n" +
-        "\tDuration: {4}\n" +
-        "\tNSFW: {5}\n" +
-        "\tMade by: {6}\n";
+    private static readonly Regex ChannelUrlRegex = new(@"^(?:https?://)?(?:www\.)?coub\.com/([^/?#\s]+)/?$", RegexOptions.IgnoreCase);
 
     public Crawler(Configuration configuration)
     {
         _configuration = configuration;
         _http = CoubHttp.Create(configuration);
+        _authToken = new AuthToken(_http);
+        _customLists = new CustomLists(new CoubPageReader(configuration, _http));
     }
 
-    public string InfoPath => Path.Combine(Environment.CurrentDirectory, Constants.CoubInfoDir);
+    public string InfoPath => CoubPaths.InfoPath;
 
-    public async Task CrawlUrlsAsync(string[] categories)
+    /// <summary>
+    ///     Gathers coubs for all entered entries and returns names of directories to download
+    /// </summary>
+    public async Task<string[]> CrawlUrlsAsync(string[] entries)
     {
-        foreach (var category in categories)
+        var directories = new List<string>();
+        var pastedUrls = new List<string>();
+
+        foreach (var entry in entries)
         {
-            if (category == LikedCategory)
+            var category = entry.ToLower();
+
+            if (category == Constants.LikedCategory)
             {
-                await DownloadScopedCoubsAsync(LikedCategory, "likes");
+                await DownloadScopedCoubsAsync(Constants.LikedCategory, "likes");
+                directories.Add(Constants.LikedCategory);
             }
-            else if (category == BookmarksCategory)
+            else if (category == Constants.BookmarksCategory)
             {
-                await DownloadScopedCoubsAsync(BookmarksCategory, "bookmarks");
+                await DownloadScopedCoubsAsync(Constants.BookmarksCategory, "bookmarks");
+                directories.Add(Constants.BookmarksCategory);
+            }
+            else if (File.Exists(entry))
+            {
+                var name = CustomLists.GetDirectory(Path.GetFileNameWithoutExtension(entry));
+                await _customLists.GatherAsync(name, await File.ReadAllLinesAsync(entry), true);
+                directories.Add(name);
+            }
+            else if (entry.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+            {
+                ConsoleEx.WriteLineColor($"[File '{entry}' was not found.]", ConsoleColor.Yellow);
+            }
+            else if (CustomLists.IsCoubUrl(entry))
+            {
+                pastedUrls.Add(entry);
+            }
+            else if (CustomLists.IsOwnList(category))
+            {
+                // Folder with URL list created by hand in Coubs-info, which was the way to do it in older versions
+                var urls = await File.ReadAllLinesAsync(CoubPaths.GetDataPath(category, Constants.UrlListFileName));
+                await _customLists.GatherAsync(category, urls, false);
+                directories.Add(category);
             }
             else
             {
-                await DownloadChannelCoubsAsync(category);
+                // Channel can be entered as its username or as its URL
+                var channelUrl = ChannelUrlRegex.Match(entry);
+                var channel = channelUrl.Success ? channelUrl.Groups[1].Value.ToLower() : category;
+
+                await DownloadChannelCoubsAsync(channel);
+                directories.Add(channel);
             }
         }
+
+        if (pastedUrls.Any())
+        {
+            await _customLists.GatherAsync(CustomList, pastedUrls, true);
+            directories.Add(CustomList);
+        }
+
+        return directories.Distinct().ToArray();
+    }
+
+    public Task ResolveUrlListsAsync()
+    {
+        return _customLists.ResolveAllAsync();
     }
 
     private async Task DownloadChannelCoubsAsync(string channel)
@@ -105,14 +145,9 @@ public class Crawler
         return match.Success ? match.Groups[1].Value : null;
     }
 
-    private string GetDataPath(string dir, string filename)
-    {
-        return Path.Combine(Path.Combine(InfoPath, dir), filename);
-    }
-
     private bool ShouldSkipDownloaded(string dir)
     {
-        var urlsPath = GetDataPath(dir, Constants.UrlListFileName);
+        var urlsPath = CoubPaths.GetDataPath(dir, Constants.UrlListFileName);
 
         if (!File.Exists(urlsPath))
         {
@@ -121,18 +156,13 @@ public class Crawler
         }
 
         var urlsCount = File.ReadLines(urlsPath).Count();
-        ConsoleEx.WriteLineColor($"[Found URL list for '{dir}' with {urlsCount} links!]", ConsoleColor.Yellow);
-        ConsoleEx.WriteLineColor("[Download the list again to get newest changes]? Original list will be deleted, but already downloaded coubs will remain unchanged.", ConsoleColor.Green);
+        ConsoleEx.WriteLineColor($"[Found previously gathered list for '{dir}' with {urlsCount} links!]", ConsoleColor.Yellow);
+        ConsoleEx.WriteLineColor("[Gather it again to get the newest coubs?] Already downloaded coubs will remain unchanged.", ConsoleColor.Green);
         ConsoleEx.WriteColor("Type [Y] for yes or [N] for no (then press enter): ", ConsoleColor.Red);
         var answer = Console.ReadLine()?.ToLower();
-        if (answer == "y" || answer == "yes")
-        {
-            // User wants new crawl, remove original file
-            File.Delete(urlsPath);
-            return false;
-        }
 
-        return true;
+        // Original list is replaced only after the new one is successfully gathered
+        return answer != "y" && answer != "yes";
     }
 
     private string GetTimelineQuery(string defaultKind, string extraParameters)
@@ -156,7 +186,7 @@ public class Crawler
             return;
         }
 
-        var token = GetAuthToken();
+        var token = _authToken.Get();
 
         if (string.IsNullOrWhiteSpace(token))
         {
@@ -174,99 +204,6 @@ public class Crawler
         {
             Console.Error.WriteLine("Unexpected error: " + ex);
         }
-    }
-
-    private string GetAuthToken()
-    {
-        if (!string.IsNullOrWhiteSpace(_usersAuthToken))
-        {
-            // If user already passed token, return it
-            return _usersAuthToken;
-        }
-
-        ConsoleEx.WriteLineColor($"[Enter/paste your auth token (value of '{TokenCookieName}' cookie, starts with base64-)]. Read README if you don't know how to get it.", ConsoleColor.Green);
-        ConsoleEx.WriteColor("[Auth Token]: ", ConsoleColor.Green);
-        var token = Console.ReadLine()?.Trim();
-
-        // Allow pasting whole cookie string or 'name=value'
-        var cookiePrefix = TokenCookieName + "=";
-        var start = token?.IndexOf(cookiePrefix, StringComparison.Ordinal) ?? -1;
-        if (start >= 0)
-        {
-            token = token.Substring(start + cookiePrefix.Length).Split(';')[0].Trim();
-        }
-
-        if (string.IsNullOrWhiteSpace(token) || !token.StartsWith(TokenPrefix, StringComparison.Ordinal))
-        {
-            ConsoleEx.WriteLineColor($"[Token must start with '{TokenPrefix}'. Make sure you copied the value of '{TokenCookieName}' cookie.]", ConsoleColor.Red);
-            return null;
-        }
-
-        _usersAuthToken = token;
-
-        return token;
-    }
-
-    private async Task<string> RefreshTokenIfExpiringAsync(string token)
-    {
-        var expiresAt = token == null ? null : GetExpiresAt(token);
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        if (expiresAt == null || expiresAt > now + RefreshMarginSeconds)
-        {
-            return token;
-        }
-
-        Console.WriteLine("Auth token is expired or about to expire, refreshing it...");
-        var newToken = await RefreshAuthTokenAsync(token);
-        if (newToken != null)
-        {
-            _usersAuthToken = newToken;
-            return newToken;
-        }
-
-        if (expiresAt <= now)
-        {
-            throw new InvalidOperationException("Auth token could not be refreshed (session ended or token was already used). Get a new token from your browser.");
-        }
-
-        // Token is still valid, Coub just does not want to refresh it yet
-        return token;
-    }
-
-    private static long? GetExpiresAt(string token)
-    {
-        // Token is base64 (url-safe, no padding) encoded session JSON
-        var base64 = token.Substring(TokenPrefix.Length).Replace('-', '+').Replace('_', '/');
-        base64 = base64.PadRight(base64.Length + (4 - base64.Length % 4) % 4, '=');
-
-        try
-        {
-            var session = JObject.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(base64)));
-            return (long?)session["expires_at"];
-        }
-        catch (Exception ex) when (ex is FormatException or JsonReaderException)
-        {
-            return null;
-        }
-    }
-
-    private async Task<string> RefreshAuthTokenAsync(string token)
-    {
-        // Coub refreshes expired session on any page request and returns new token in Set-Cookie
-        using var request = new HttpRequestMessage(HttpMethod.Get, RefreshUrl);
-        request.Headers.Add("Cookie", $"{TokenCookieName}={token}");
-
-        using var response = await _http.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-
-        var cookiePrefix = TokenCookieName + "=";
-        var cookie = response.Headers.TryGetValues("Set-Cookie", out var cookies)
-            ? cookies.FirstOrDefault(x => x.StartsWith(cookiePrefix, StringComparison.Ordinal))
-            : null;
-        var newToken = cookie?.Substring(cookiePrefix.Length).Split(';')[0];
-
-        // No new token (or cleared cookie) means Coub did not refresh the session
-        return string.IsNullOrEmpty(newToken) ? null : newToken;
     }
 
     private static Pager GetPager()
@@ -296,18 +233,23 @@ public class Crawler
         _pager = GetPager();
 
         var links = await GetLinksAsync(query, token, channel);
-
-        var rawMetaDataPath = GetDataPath(dir, Constants.RawMetaDataFileName);
-        var formattedMetaDataPath = GetDataPath(dir, Constants.MetaDataFileName);
-        var urlsPath = GetDataPath(dir, Constants.UrlListFileName);
-        var mediaPath = GetDataPath(dir, Constants.MediaListFileName);
-
-        if (!Directory.Exists(InfoPath))
+        if (links.Count == 0)
         {
-            Directory.CreateDirectory(InfoPath);
+            ConsoleEx.WriteLineColor($"[No coubs were gathered for '{dir}', existing list (if there is any) is kept.]", ConsoleColor.Yellow);
+            return;
         }
 
-        var subDirectory = Path.Combine(InfoPath, dir);
+        var rawMetaDataPath = CoubPaths.GetDataPath(dir, Constants.RawMetaDataFileName);
+        var formattedMetaDataPath = CoubPaths.GetDataPath(dir, Constants.MetaDataFileName);
+        var urlsPath = CoubPaths.GetDataPath(dir, Constants.UrlListFileName);
+        var mediaPath = CoubPaths.GetDataPath(dir, Constants.MediaListFileName);
+
+        if (!Directory.Exists(CoubPaths.InfoPath))
+        {
+            Directory.CreateDirectory(CoubPaths.InfoPath);
+        }
+
+        var subDirectory = Path.Combine(CoubPaths.InfoPath, dir);
         if (!Directory.Exists(subDirectory))
         {
             Directory.CreateDirectory(subDirectory);
@@ -323,7 +265,7 @@ public class Crawler
         if (links.Any(x => x.IsRepost))
         {
             Console.WriteLine($"Saving {links.Count(x => x.IsRepost)} repost URLs...");
-            var repostsPath = GetDataPath(dir, Constants.RepostUrlListFileName);
+            var repostsPath = CoubPaths.GetDataPath(dir, Constants.RepostUrlListFileName);
             var repostLinks = string.Join("\n", links.Where(x => x.IsRepost).Select(x => x.RepostUrl));
             await File.WriteAllTextAsync(repostsPath, repostLinks, Encoding.UTF8);
         }
@@ -345,13 +287,13 @@ public class Crawler
 
     private async Task<string> DownloadJsonAsync(string url, string token = null)
     {
-        await Task.Delay((int)_configuration.WaitTime * 1000);
+        await Task.Delay(_configuration.WaitDelay);
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
 
         if (!string.IsNullOrWhiteSpace(token))
         {
             // Add cookies header with auth token to retrieve user-specific data
-            request.Headers.Add("Cookie", $"{TokenCookieName}={token}");
+            request.Headers.Add("Cookie", AuthToken.GetCookie(token));
         }
 
         using var response = await _http.SendAsync(request);
@@ -376,7 +318,7 @@ public class Crawler
             JObject data;
             try
             {
-                token = await RefreshTokenIfExpiringAsync(token);
+                token = await _authToken.RefreshIfExpiringAsync(token);
                 var json = await DownloadJsonAsync(url, token);
                 data = JObject.Parse(json);
             }
@@ -386,7 +328,7 @@ public class Crawler
                 return downloadedData;
             }
 
-            var coubs = (JArray)data["items"];
+            var coubs = (JArray)data["items"] ?? [];
             if (page == 1 && coubs.Count == 0 && token != null)
             {
                 // Invalid or expired token is not an error, API just returns empty list
@@ -395,43 +337,8 @@ public class Crawler
 
             foreach (var coub in coubs)
             {
-                var tags = coub["tags"].Select(x => x.ToString()).ToList();
                 var isNsfw = (bool?)coub["ageRestricted"] ?? false;
-                var permalink = coub["permalink"].ToString();
-                var title = coub["title"].ToString();
-
-                // Channel timeline contains coubs from other channels only when they were reposted
-                var madeBy = coub["channel"]["permalink"].ToString();
-                var isRepost = channel != null && !string.Equals(madeBy, channel, StringComparison.OrdinalIgnoreCase);
-
-                var formatted = string.Format(DataFormat,
-                    BaseUrl + permalink,
-                    title.RemoveLinebreaks(),
-                    string.Join(",", tags),
-                    coub["publishedAt"],
-                    coub["duration"],
-                    isNsfw ? "Yes" : "No",
-                    madeBy);
-
-                var result = new CoubDownloadResult
-                {
-                    Link = BaseUrl + permalink,
-                    IsRepost = isRepost,
-                    RepostUrl = isRepost ? BaseUrl + permalink : string.Empty,
-                    FormattedData = formatted,
-                    RawData = coub.ToString(),
-                    Media = new CoubMedia
-                    {
-                        Permalink = permalink,
-                        Title = title,
-                        IsRepost = isRepost,
-                        VideoHdUrl = (string)coub["videoHdUrl"],
-                        VideoSdUrl = (string)coub["videoSdUrl"],
-                        VideoLowUrl = (string)coub["videoLowUrl"],
-                        AudioUrl = (string)coub["audioUrl"],
-                        AudioMedUrl = (string)coub["audioMedUrl"]
-                    }
-                };
+                var result = CoubDownloadResult.From(coub, channel);
 
                 if (!_configuration.NsfwOnly ||
                     (_configuration.NsfwOnly && isNsfw))

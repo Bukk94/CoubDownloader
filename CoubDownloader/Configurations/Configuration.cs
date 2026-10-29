@@ -1,10 +1,14 @@
-﻿namespace CoubDownloader.Configurations;
+﻿using System;
+
+namespace CoubDownloader.Configurations;
 
 public class Configuration
 {
     public int Loops { get; set; }
 
     public double WaitTime { get; set; }
+
+    public TimeSpan WaitDelay => TimeSpan.FromSeconds(WaitTime);
 
     public VideoQuality VideoQuality { get; set; }
         

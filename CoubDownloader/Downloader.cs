@@ -61,7 +61,7 @@ public class Downloader
         var mediaPath = Path.Combine(infoPath, dir, Constants.MediaListFileName);
         if (!File.Exists(mediaPath))
         {
-            ConsoleEx.WriteLineColor($"[No media list found for '{dir}'. URL lists from older versions cannot be downloaded, crawl this category again.]", ConsoleColor.Red);
+            ConsoleEx.WriteLineColor($"[No media info found for '{dir}', nothing to download.]", ConsoleColor.Red);
             return;
         }
 
@@ -117,7 +117,7 @@ public class Downloader
                 archive.Add(coub.Permalink);
                 await File.AppendAllTextAsync(archivePath, coub.Permalink + "\n");
 
-                await Task.Delay((int)(_configuration.WaitTime * 1000));
+                await Task.Delay(_configuration.WaitDelay);
             }
 
             ConsoleEx.WriteLineColor("[DONE]", ConsoleColor.Blue);

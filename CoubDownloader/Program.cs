@@ -13,7 +13,9 @@ public class Program
 {
     private static readonly string Version =
         Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
-        
+
+    private const string SupportUrl = "https://ko-fi.com/bukk94";
+
     public static async Task Main()
     {
         if (OperatingSystem.IsWindows())
@@ -44,22 +46,25 @@ public class Program
             var logFile = Path.Combine(Environment.CurrentDirectory, "err.log");
             File.WriteAllText(logFile, ex.ToString());
         }
-            
+
+        Console.WriteLine("\nPress any key to exit...");
         Console.ReadKey(true);
     }
 
     private static string GetDownloadInput()
     {
         ConsoleEx.WriteLineColor("[What do you want to download?]", ConsoleColor.Green);
-        Console.WriteLine("You can download your liked coubs by typing liked, bookmarks or any channel by entering its username (not displayname!)");
-        Console.WriteLine("You can download multiple channels, separated by comma.");
-        Console.WriteLine("If you already have a list of URLs in correct format, leave input empty and just press enter.\n");
-        Console.WriteLine("Input example: liked,bookmarks,channelone,redcoubhead,just.for.kicks");
+        Console.WriteLine("You can download your liked coubs or bookmarks by typing liked or bookmarks,");
+        Console.WriteLine("and any channel by entering its username (not displayname!) or its URL.");
+        Console.WriteLine("You can also enter coub URLs, or a path to a text file with coub URLs (one per line).");
+        Console.WriteLine("You can combine multiple entries, separated by comma.");
+        Console.WriteLine("Leave input empty and just press enter to download everything that was already gathered.\n");
+        Console.WriteLine("Input example: liked,bookmarks,channelone,C:\\coubs\\list.txt,https://coub.com/view/19wef6");
 
         ConsoleEx.WriteColor("[Input]: ", ConsoleColor.Green);
         var input = Console.ReadLine();
-            
-        return input?.ToLower().Trim();
+
+        return input?.Trim();
     }
 
     private static Configuration LoadConfiguration()
@@ -151,7 +156,7 @@ public class Program
         var downloader = new Downloader(configuration);
 
         var toDownload = input?.Split(",", StringSplitOptions.RemoveEmptyEntries)
-            .Select(x => x.Trim())
+            .Select(x => x.Trim().Trim('"'))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToArray() ?? Array.Empty<string>();
             
@@ -172,15 +177,31 @@ public class Program
             }
         }
             
+        var directories = Array.Empty<string>();
         if (!toDownload.Any())
         {
             Console.Error.WriteLine("No user input, looking for already downloaded links...");
+            await crawler.ResolveUrlListsAsync();
         }
         else
         {
-            await crawler.CrawlUrlsAsync(toDownload);
+            directories = await crawler.CrawlUrlsAsync(toDownload);
         }
 
-        await downloader.DownloadCoubsAsync(crawler.InfoPath, toDownload);
+        await downloader.DownloadCoubsAsync(crawler.InfoPath, directories);
+
+        WriteFinished();
+    }
+
+    private static void WriteFinished()
+    {
+        const string line = "[============================================================]";
+
+        Console.WriteLine();
+        ConsoleEx.WriteLineColor(line, ConsoleColor.Green);
+        ConsoleEx.WriteLineColor("[ALL DONE!] Everything has been processed.", ConsoleColor.Green);
+        Console.WriteLine("Thank you for using Coub Downloader.");
+        ConsoleEx.WriteLineColor($"If you like it, you can support its development on Ko-fi: [{SupportUrl}]", ConsoleColor.Cyan);
+        ConsoleEx.WriteLineColor(line, ConsoleColor.Green);
     }
 }
