@@ -27,6 +27,8 @@ public class Crawler
     private const string TimelineUrl = "https://coub.com/api/coub-site/timeline";
     private const string TokenCookieName = "sb-gotrue-auth-token";
     private const string TokenPrefix = "base64-";
+    private const string RefreshUrl = "https://coub.com/foryou";
+    private const int RefreshMarginSeconds = 5;
 
     private const string DataFormat =
         "{0}\n" +
@@ -205,6 +207,68 @@ public class Crawler
         return token;
     }
 
+    private async Task<string> RefreshTokenIfExpiringAsync(string token)
+    {
+        var expiresAt = token == null ? null : GetExpiresAt(token);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (expiresAt == null || expiresAt > now + RefreshMarginSeconds)
+        {
+            return token;
+        }
+
+        Console.WriteLine("Auth token is expired or about to expire, refreshing it...");
+        var newToken = await RefreshAuthTokenAsync(token);
+        if (newToken != null)
+        {
+            _usersAuthToken = newToken;
+            return newToken;
+        }
+
+        if (expiresAt <= now)
+        {
+            throw new InvalidOperationException("Auth token could not be refreshed (session ended or token was already used). Get a new token from your browser.");
+        }
+
+        // Token is still valid, Coub just does not want to refresh it yet
+        return token;
+    }
+
+    private static long? GetExpiresAt(string token)
+    {
+        // Token is base64 (url-safe, no padding) encoded session JSON
+        var base64 = token.Substring(TokenPrefix.Length).Replace('-', '+').Replace('_', '/');
+        base64 = base64.PadRight(base64.Length + (4 - base64.Length % 4) % 4, '=');
+
+        try
+        {
+            var session = JObject.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(base64)));
+            return (long?)session["expires_at"];
+        }
+        catch (Exception ex) when (ex is FormatException or JsonReaderException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<string> RefreshAuthTokenAsync(string token)
+    {
+        // Coub refreshes expired session on any page request and returns new token in Set-Cookie
+        using var request = new HttpRequestMessage(HttpMethod.Get, RefreshUrl);
+        request.Headers.Add("Cookie", $"{TokenCookieName}={token}");
+
+        using var response = await _http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var cookiePrefix = TokenCookieName + "=";
+        var cookie = response.Headers.TryGetValues("Set-Cookie", out var cookies)
+            ? cookies.FirstOrDefault(x => x.StartsWith(cookiePrefix, StringComparison.Ordinal))
+            : null;
+        var newToken = cookie?.Substring(cookiePrefix.Length).Split(';')[0];
+
+        // No new token (or cleared cookie) means Coub did not refresh the session
+        return string.IsNullOrEmpty(newToken) ? null : newToken;
+    }
+
     private static Pager GetPager()
     {
         ConsoleEx.WriteColor("[Number of coubs to download]. Type -1 for all, or number of coubs to download: ", ConsoleColor.Green);
@@ -312,6 +376,7 @@ public class Crawler
             JObject data;
             try
             {
+                token = await RefreshTokenIfExpiringAsync(token);
                 var json = await DownloadJsonAsync(url, token);
                 data = JObject.Parse(json);
             }
