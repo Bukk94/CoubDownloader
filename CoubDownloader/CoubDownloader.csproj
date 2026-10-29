@@ -14,6 +14,7 @@
         <AssemblyVersion>2.0.0</AssemblyVersion>
         <FileVersion>2.0.0</FileVersion>
         <LangVersion>default</LangVersion>
+        <IncludeSourceRevisionInIdentifier>false</IncludeSourceRevisionInIdentifier>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

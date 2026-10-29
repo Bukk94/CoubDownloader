@@ -31,8 +31,15 @@ public class Downloader
         }
     }
 
-    public async Task DownloadCoubsAsync(string infoPath, string[] dirs)
+    public async Task<DownloadSummary> DownloadCoubsAsync(string infoPath, string[] dirs)
     {
+        var summary = new DownloadSummary();
+        if (!dirs.Any() && !Directory.Exists(infoPath))
+        {
+            // Nothing was gathered yet
+            return summary;
+        }
+
         var directoriesToDownload = dirs.Any() ? dirs : Directory.GetDirectories(infoPath);
 
         foreach (var directory in directoriesToDownload)
@@ -41,11 +48,20 @@ public class Downloader
             if (!HasUrlList(infoPath, dir))
             {
                 Console.WriteLine($"No URL list for category '{dir}' found, skipping download...");
+
+                // Category entered by user should exist, folders found by scanning are not that important
+                if (dirs.Any())
+                {
+                    summary.Problems++;
+                }
+
                 continue;
             }
 
-            await DownloadCoubsCategoryAsync(infoPath, dir);
+            summary.Add(await DownloadCoubsCategoryAsync(infoPath, dir));
         }
+
+        return summary;
     }
 
     private static bool HasUrlList(string path, string dir)
@@ -54,22 +70,25 @@ public class Downloader
         return File.Exists(filename);
     }
 
-    private async Task DownloadCoubsCategoryAsync(string infoPath, string dir)
+    private async Task<DownloadSummary> DownloadCoubsCategoryAsync(string infoPath, string dir)
     {
+        var summary = new DownloadSummary();
         ConsoleEx.WriteLineColor($"[Starting download of '{dir}'...]", ConsoleColor.Yellow);
 
         var mediaPath = Path.Combine(infoPath, dir, Constants.MediaListFileName);
         if (!File.Exists(mediaPath))
         {
             ConsoleEx.WriteLineColor($"[No media info found for '{dir}', nothing to download.]", ConsoleColor.Red);
-            return;
+            summary.Problems++;
+            return summary;
         }
 
         var hasFfmpeg = await HasFfmpegAsync();
         if (!hasFfmpeg)
         {
             ConsoleEx.WriteLineColor("[ffmpeg was not found. Install it and make sure it is available in PATH.]", ConsoleColor.Red);
-            return;
+            summary.Problems++;
+            return summary;
         }
 
         try
@@ -89,9 +108,6 @@ public class Downloader
             }
 
             var count = 0;
-            var downloaded = 0;
-            var skipped = 0;
-            var failed = 0;
             foreach (var coub in coubs)
             {
                 count++;
@@ -102,7 +118,7 @@ public class Downloader
                 if (archive.Contains(coub.Permalink))
                 {
                     Console.WriteLine("    Already downloaded, skipping...");
-                    skipped++;
+                    summary.Skipped++;
                     continue;
                 }
 
@@ -110,7 +126,7 @@ public class Downloader
                 {
                     Console.WriteLine("    File already exists, skipping...");
                     await AddToArchiveAsync(archive, archivePath, coub.Permalink);
-                    skipped++;
+                    summary.Skipped++;
                     continue;
                 }
 
@@ -119,29 +135,32 @@ public class Downloader
                     var isDownloaded = await DownloadCoubAsync(coub, coubDir);
                     if (!isDownloaded)
                     {
-                        failed++;
+                        summary.Failed++;
                         continue;
                     }
                 }
                 catch (Exception ex)
                 {
                     ConsoleEx.WriteLineColor($"    [Failed to download coub '{coub.Permalink}']: {ex.Message}", ConsoleColor.Red);
-                    failed++;
+                    summary.Failed++;
                     continue;
                 }
 
-                downloaded++;
+                summary.Downloaded++;
                 await AddToArchiveAsync(archive, archivePath, coub.Permalink);
 
                 await Task.Delay(_configuration.WaitDelay);
             }
 
-            ConsoleEx.WriteLineColor($"[DONE:] Downloaded: {downloaded}, skipped: {skipped}, failed: {failed}", ConsoleColor.Blue);
+            ConsoleEx.WriteLineColor($"[DONE:] Downloaded: {summary.Downloaded}, skipped: {summary.Skipped}, failed: {summary.Failed}", ConsoleColor.Blue);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Fatal error: {ex}");
+            summary.Problems++;
         }
+
+        return summary;
     }
 
     private static async Task AddToArchiveAsync(HashSet<string> archive, string archivePath, string permalink)

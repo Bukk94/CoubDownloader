@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using CoubDownloader.Configurations;
 using CoubDownloader.Extensions;
+using CoubDownloader.Models;
 using Newtonsoft.Json;
 
 namespace CoubDownloader;
@@ -196,18 +197,30 @@ public class Program
             directories = await crawler.CrawlUrlsAsync(toDownload);
         }
 
-        await downloader.DownloadCoubsAsync(crawler.InfoPath, directories);
+        var summary = await downloader.DownloadCoubsAsync(crawler.InfoPath, directories);
 
-        WriteFinished();
+        WriteFinished(summary);
     }
 
-    private static void WriteFinished()
+    private static void WriteFinished(DownloadSummary summary)
     {
         const string line = "[============================================================]";
 
         Console.WriteLine();
+
+        if (summary.HasProblems)
+        {
+            ConsoleEx.WriteLineColor(line, ConsoleColor.Yellow);
+            ConsoleEx.WriteLineColor("[FINISHED WITH PROBLEMS!] Some coubs or lists could not be downloaded.", ConsoleColor.Yellow);
+            Console.WriteLine($"Downloaded: {summary.Downloaded}, skipped: {summary.Skipped}, failed: {summary.Failed}");
+            Console.WriteLine("Check the messages above to see what went wrong.");
+            ConsoleEx.WriteLineColor(line, ConsoleColor.Yellow);
+            return;
+        }
+
         ConsoleEx.WriteLineColor(line, ConsoleColor.Green);
         ConsoleEx.WriteLineColor("[ALL DONE!] Everything has been processed.", ConsoleColor.Green);
+        Console.WriteLine($"Downloaded: {summary.Downloaded}, skipped: {summary.Skipped}");
         Console.WriteLine("Thank you for using Coub Downloader.");
         ConsoleEx.WriteLineColor($"If you like it, you can support its development on Ko-fi: [{SupportUrl}]", ConsoleColor.Cyan);
         ConsoleEx.WriteLineColor(line, ConsoleColor.Green);

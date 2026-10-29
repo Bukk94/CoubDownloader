@@ -39,6 +39,7 @@ It can download:
 * [How it works](#how-it-works)
     + [Downloading own list of URLs](#downloading-own-list-of-urls)
 * [Requirements](#requirements)
+    + [Which package to download](#which-package-to-download)
 * [How to install ffmpeg](#how-to-install-ffmpeg)
 * [How to run](#how-to-run)
     + [Username vs Display name](#username-vs-display-name)
@@ -107,6 +108,16 @@ Otherwise you need:
 
 * ffmpeg (see [How to install ffmpeg](#how-to-install-ffmpeg))
 * [.NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/runtime)
+
+### Which package to download
+
+Each release comes in three packages:
+
+| Package                           | For                                   | Includes                             | You also need                                                                                                             |
+|-----------------------------------|---------------------------------------|--------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `Coub Downloader_v<version>_full` | Most users (64-bit Windows)           | Downloader, .NET runtime and ffmpeg  | Nothing                                                                                                                   |
+| `Coub Downloader_v<version>`      | Users who already have .NET installed | Downloader only (small download)     | [.NET 10.0 runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0/runtime) and [ffmpeg](#how-to-install-ffmpeg) |
+| `Coub Downloader_v<version>_x32`  | 32-bit Windows                        | Downloader and .NET runtime (32-bit) | [ffmpeg](#how-to-install-ffmpeg) (a 32-bit build if your Windows is 32-bit)                                               |
 
 ## How to install ffmpeg
 
