@@ -1,10 +1,9 @@
-﻿namespace CoubDownloader.Configurations
+﻿namespace CoubDownloader.Configurations;
+
+public enum CoubOrder
 {
-    public enum CoubOrder
-    {
-        Newest,
-        LikesCount,
-        ViewsCount,
-        Oldest
-    }
+    Newest,
+    LikesCount,
+    ViewsCount,
+    Oldest
 }
