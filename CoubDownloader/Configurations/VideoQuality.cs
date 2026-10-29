@@ -1,9 +1,8 @@
-﻿namespace CoubDownloader.Configurations
+﻿namespace CoubDownloader.Configurations;
+
+public enum VideoQuality
 {
-    public enum VideoQuality
-    {
-        Highest,
-        Medium,
-        Low
-    }
+    Highest,
+    Medium,
+    Low
 }

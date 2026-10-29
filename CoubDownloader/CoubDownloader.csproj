@@ -2,13 +2,19 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ApplicationIcon>icon.ico</ApplicationIcon>
-        <Company>BearSoft</Company>
         <Product>Coub Downloader</Product>
-        <AssemblyVersion>1.0.14</AssemblyVersion>
-        <FileVersion>1.0.14</FileVersion>
+        <Title>Coub Downloader</Title>
+        <Description>Console tool to download coubs (channels, likes, bookmarks) from coub.com</Description>
+        <Authors>Bukk94</Authors>
+        <Copyright>Copyright (c) Bukk94</Copyright>
+        <RepositoryUrl>https://github.com/Bukk94/CoubDownloader</RepositoryUrl>
+        <Version>2.0.0</Version>
+        <AssemblyVersion>2.0.0</AssemblyVersion>
+        <FileVersion>2.0.0</FileVersion>
         <LangVersion>default</LangVersion>
+        <IncludeSourceRevisionInIdentifier>false</IncludeSourceRevisionInIdentifier>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -20,10 +26,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="coub_v2.py" />
-      <Content Include="coub_v2.py">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </Content>
       <None Remove="Configurations\Configuration.json" />
       <ContentWithTargetPath Include="Configurations\Configuration.json" TargetPath="%(Filename)%(Extension)">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
