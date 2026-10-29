@@ -13,7 +13,8 @@
   "WaitTime": 2.5,
   
   // Coub's video quality. By default downloading the best available, but that can take up huge amount of space.
-  // This settings allows downloading highest (~900p), medium (~720p) and low (~360p) quality videos.
+  // This settings allows downloading the best available (usually 720p to 1080p), medium (standard, ~360p)
+  // and the lowest available quality videos.
   // Allowed values: Highest, Medium, Low
   // Default: Highest
   "VideoQuality": "Highest",

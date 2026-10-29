@@ -89,43 +89,70 @@ public class Downloader
             }
 
             var count = 0;
+            var downloaded = 0;
+            var skipped = 0;
+            var failed = 0;
             foreach (var coub in coubs)
             {
                 count++;
                 Console.WriteLine($"  {count} out of {coubs.Count} ({coub.Permalink})");
 
+                var coubDir = coub.IsRepost ? repostsDir : targetDir;
+
                 if (archive.Contains(coub.Permalink))
                 {
                     Console.WriteLine("    Already downloaded, skipping...");
+                    skipped++;
+                    continue;
+                }
+
+                if (File.Exists(GetPath(coub, coubDir) + ".mp4"))
+                {
+                    Console.WriteLine("    File already exists, skipping...");
+                    await AddToArchiveAsync(archive, archivePath, coub.Permalink);
+                    skipped++;
                     continue;
                 }
 
                 try
                 {
-                    var isDownloaded = await DownloadCoubAsync(coub, coub.IsRepost ? repostsDir : targetDir);
+                    var isDownloaded = await DownloadCoubAsync(coub, coubDir);
                     if (!isDownloaded)
                     {
+                        failed++;
                         continue;
                     }
                 }
                 catch (Exception ex)
                 {
                     ConsoleEx.WriteLineColor($"    [Failed to download coub '{coub.Permalink}']: {ex.Message}", ConsoleColor.Red);
+                    failed++;
                     continue;
                 }
 
-                archive.Add(coub.Permalink);
-                await File.AppendAllTextAsync(archivePath, coub.Permalink + "\n");
+                downloaded++;
+                await AddToArchiveAsync(archive, archivePath, coub.Permalink);
 
                 await Task.Delay(_configuration.WaitDelay);
             }
 
-            ConsoleEx.WriteLineColor("[DONE]", ConsoleColor.Blue);
+            ConsoleEx.WriteLineColor($"[DONE:] Downloaded: {downloaded}, skipped: {skipped}, failed: {failed}", ConsoleColor.Blue);
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Fatal error: {ex}");
         }
+    }
+
+    private static async Task AddToArchiveAsync(HashSet<string> archive, string archivePath, string permalink)
+    {
+        archive.Add(permalink);
+        await File.AppendAllTextAsync(archivePath, permalink + "\n");
+    }
+
+    private static string GetPath(CoubMedia coub, string targetDir)
+    {
+        return Path.Combine(targetDir, $"{coub.Permalink}_{GetSafeName(coub.Title)}");
     }
 
     private async Task<bool> DownloadCoubAsync(CoubMedia coub, string targetDir)
@@ -137,7 +164,7 @@ public class Downloader
             return false;
         }
 
-        var name = Path.Combine(targetDir, $"{coub.Permalink}_{GetSafeName(coub.Title)}");
+        var name = GetPath(coub, targetDir);
         var videoPath = name + "_raw.mp4";
         var audioPath = name + ".mp3";
         var outputPath = name + ".mp4";
@@ -209,10 +236,22 @@ public class Downloader
         // Loop video until audio ends (or for configured number of loops)
         var loops = _configuration.Loops > 0 ? _configuration.Loops - 1 : -1;
 
-        await RunFfmpegAsync("-y", "-v", "error",
-            "-stream_loop", loops.ToString(), "-i", videoPath,
-            "-i", audioPath,
-            "-c", "copy", "-shortest", outputPath);
+        // Merge into a temporary file, so an interrupted merge never leaves a broken coub behind
+        var tempPath = Path.ChangeExtension(outputPath, ".tmp.mp4");
+
+        try
+        {
+            await RunFfmpegAsync("-y", "-v", "error",
+                "-stream_loop", loops.ToString(), "-i", videoPath,
+                "-i", audioPath,
+                "-c", "copy", "-shortest", tempPath);
+
+            File.Move(tempPath, outputPath, true);
+        }
+        finally
+        {
+            File.Delete(tempPath);
+        }
     }
 
     private static async Task<bool> HasFfmpegAsync()

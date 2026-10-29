@@ -20,7 +20,15 @@ public class Program
     {
         if (OperatingSystem.IsWindows())
         {
-            Console.SetWindowSize(130, Console.WindowHeight);
+            try
+            {
+                // Try to set width to nicely match text, but if that fails it's no big deal.
+                Console.SetWindowSize(130, Console.WindowHeight);
+            }
+            catch
+            {
+                // Window is bigger than the screen allows or the console does not support resizing
+            }
         }
         
         ConsoleEx.WriteLineColor(@"[
