@@ -125,7 +125,8 @@ ffmpeg is used to merge the video and audio of each coub into the final file. Ch
 
 **Option 1: Put it next to the downloader (simplest)**
 
-1. Download [ffmpeg](https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z) and unpack it (for example with 7-Zip).
+1. Download the [ffmpeg release essentials build](https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip) 
+   and unzip it. The "full" builds works too, but they are about twice as big and contain nothing this tool needs.
 2. Find `ffmpeg.exe` in the `bin` folder.
 3. Copy `ffmpeg.exe` into the folder with `CoubDownloader.exe`.
 
@@ -134,7 +135,7 @@ ffmpeg is used to merge the video and audio of each coub into the final file. Ch
 Open a terminal and run:
 
 ```shell
-winget install Gyan.FFmpeg
+winget install Gyan.FFmpeg.Essentials
 ```
 
 Then open a new terminal window (or sign out and in) so the updated `PATH` is picked up.
@@ -255,6 +256,9 @@ into the category's folder in `Coubs-info`:
 
 The original download script was written by [artemtar](https://github.com/artemtar/CoubDownloader).
 It was used as a base for this tool until Coub changed its API.
+
+The `full` package includes an ffmpeg build from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/), which is licensed
+under the GPLv3. ffmpeg is developed by the [FFmpeg project](https://ffmpeg.org), where its source code is available.
 
 ## Troubleshooting
 

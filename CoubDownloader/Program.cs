@@ -19,25 +19,21 @@ public class Program
 
     public static async Task Main()
     {
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                // Try to set width to nicely match text, but if that fails it's no big deal.
-                Console.SetWindowSize(130, Console.WindowHeight);
-            }
-            catch
-            {
-                // Window is bigger than the screen allows or the console does not support resizing
-            }
-        }
-        
+        // Logo is split into two lines, so it fits into 120 columns (default size of Windows Terminal)
+        // and the window does not need to be resized
         ConsoleEx.WriteLineColor(@"[
- ██████  ██████  ██    ██ ██████      ██████   ██████  ██     ██ ███    ██ ██       ██████   █████  ██████  ███████ ██████  
-██      ██    ██ ██    ██ ██   ██     ██   ██ ██    ██ ██     ██ ████   ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██ 
-██      ██    ██ ██    ██ ██████      ██   ██ ██    ██ ██  █  ██ ██ ██  ██ ██      ██    ██ ███████ ██   ██ █████   ██████  
-██      ██    ██ ██    ██ ██   ██     ██   ██ ██    ██ ██ ███ ██ ██  ██ ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██ 
- ██████  ██████   ██████  ██████      ██████   ██████   ███ ███  ██   ████ ███████  ██████  ██   ██ ██████  ███████ ██   ██ 
+ ██████  ██████  ██    ██ ██████
+██      ██    ██ ██    ██ ██   ██
+██      ██    ██ ██    ██ ██████
+██      ██    ██ ██    ██ ██   ██
+ ██████  ██████   ██████  ██████
+]", ConsoleColor.Blue);
+        ConsoleEx.WriteLineColor(@"
+[██████   ██████  ██     ██ ███    ██ ██       ██████   █████  ██████  ███████ ██████
+██   ██ ██    ██ ██     ██ ████   ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██
+██   ██ ██    ██ ██  █  ██ ██ ██  ██ ██      ██    ██ ███████ ██   ██ █████   ██████
+██   ██ ██    ██ ██ ███ ██ ██  ██ ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██
+██████   ██████   ███ ███  ██   ████ ███████  ██████  ██   ██ ██████  ███████ ██   ██
 ]", ConsoleColor.Blue);
         Console.WriteLine($"[Version: {Version}]\n");
             
