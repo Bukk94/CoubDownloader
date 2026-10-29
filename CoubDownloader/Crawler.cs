@@ -20,12 +20,13 @@ public class Crawler
     private readonly Configuration _configuration;
     private readonly HttpClient _http;
     private Pager _pager = new();
-    private string _usersAccessToken;
+    private string _usersAuthToken;
     private const string LikedCategory = "liked";
     private const string BookmarksCategory = "bookmarks";
     private const string BaseUrl = "https://coub.com/view/";
     private const string TimelineUrl = "https://coub.com/api/coub-site/timeline";
     private const string TokenCookieName = "sb-gotrue-auth-token";
+    private const string TokenPrefix = "base64-";
 
     private const string DataFormat =
         "{0}\n" +
@@ -46,11 +47,6 @@ public class Crawler
 
     public async Task CrawlUrlsAsync(string[] categories)
     {
-        if (_configuration.DownloadSegments)
-        {
-            ConsoleEx.WriteLineColor("[Segments are no longer available on Coub, DownloadSegments is ignored.]", ConsoleColor.Yellow);
-        }
-
         foreach (var category in categories)
         {
             if (category == LikedCategory)
@@ -158,7 +154,7 @@ public class Crawler
             return;
         }
 
-        var token = GetAccessToken();
+        var token = GetAuthToken();
 
         if (string.IsNullOrWhiteSpace(token))
         {
@@ -178,16 +174,16 @@ public class Crawler
         }
     }
 
-    private string GetAccessToken()
+    private string GetAuthToken()
     {
-        if (!string.IsNullOrWhiteSpace(_usersAccessToken))
+        if (!string.IsNullOrWhiteSpace(_usersAuthToken))
         {
             // If user already passed token, return it
-            return _usersAccessToken;
+            return _usersAuthToken;
         }
 
-        ConsoleEx.WriteLineColor($"[Enter/paste your access token (value of '{TokenCookieName}' cookie)]. Read README if you don't know how to get it.", ConsoleColor.Green);
-        ConsoleEx.WriteColor("[Access Token]: ", ConsoleColor.Green);
+        ConsoleEx.WriteLineColor($"[Enter/paste your auth token (value of '{TokenCookieName}' cookie, starts with base64-)]. Read README if you don't know how to get it.", ConsoleColor.Green);
+        ConsoleEx.WriteColor("[Auth Token]: ", ConsoleColor.Green);
         var token = Console.ReadLine()?.Trim();
 
         // Allow pasting whole cookie string or 'name=value'
@@ -198,7 +194,13 @@ public class Crawler
             token = token.Substring(start + cookiePrefix.Length).Split(';')[0].Trim();
         }
 
-        _usersAccessToken = token;
+        if (string.IsNullOrWhiteSpace(token) || !token.StartsWith(TokenPrefix, StringComparison.Ordinal))
+        {
+            ConsoleEx.WriteLineColor($"[Token must start with '{TokenPrefix}'. Make sure you copied the value of '{TokenCookieName}' cookie.]", ConsoleColor.Red);
+            return null;
+        }
+
+        _usersAuthToken = token;
 
         return token;
     }
@@ -224,7 +226,7 @@ public class Crawler
         ConsoleEx.WriteLineColor($"[Starting gathering links for '{dir}'...]", ConsoleColor.Yellow);
         if (_configuration.NsfwOnly)
         {
-            ConsoleEx.WriteLineColor($"[Downloading NSFW coubs ONLY!]", ConsoleColor.Magenta);
+            ConsoleEx.WriteLineColor("[Downloading NSFW coubs ONLY!]", ConsoleColor.Magenta);
         }
 
         _pager = GetPager();
@@ -284,7 +286,7 @@ public class Crawler
 
         if (!string.IsNullOrWhiteSpace(token))
         {
-            // Add cookies header with access token to retrieve user-specific data
+            // Add cookies header with auth token to retrieve user-specific data
             request.Headers.Add("Cookie", $"{TokenCookieName}={token}");
         }
 
@@ -323,7 +325,7 @@ public class Crawler
             if (page == 1 && coubs.Count == 0 && token != null)
             {
                 // Invalid or expired token is not an error, API just returns empty list
-                ConsoleEx.WriteLineColor("[No coubs returned. Your access token might be invalid or expired.]", ConsoleColor.Yellow);
+                ConsoleEx.WriteLineColor("[No coubs returned. Your auth token might be invalid or expired.]", ConsoleColor.Yellow);
             }
 
             foreach (var coub in coubs)

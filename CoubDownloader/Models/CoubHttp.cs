@@ -11,7 +11,7 @@ public static class CoubHttp
     {
         var handler = new HttpClientHandler
         {
-            // Cookie header with access token is set manually
+            // Cookie header with auth token is set manually
             UseCookies = false,
             AutomaticDecompression = DecompressionMethods.All
         };
@@ -21,7 +21,7 @@ public static class CoubHttp
             handler.Proxy = new WebProxy(configuration.ProxyUrl);
         }
 
-        var client = new HttpClient(handler)
+        var client = new HttpClient(new RetryHandler(handler))
         {
             Timeout = TimeSpan.FromMinutes(5)
         };

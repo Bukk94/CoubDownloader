@@ -16,11 +16,11 @@ public class Program
         
     public static async Task Main()
     {
-        try
+        if (OperatingSystem.IsWindows())
         {
-            // This call is Windows specific. Try to set width to nicely match text, but if that fails it's no big deal.
             Console.SetWindowSize(130, Console.WindowHeight);
-        } catch {}
+        }
+        
         ConsoleEx.WriteLineColor(@"[
  ██████  ██████  ██    ██ ██████      ██████   ██████  ██     ██ ███    ██ ██       ██████   █████  ██████  ███████ ██████  
 ██      ██    ██ ██    ██ ██   ██     ██   ██ ██    ██ ██     ██ ████   ██ ██      ██    ██ ██   ██ ██   ██ ██      ██   ██ 

@@ -1,10 +1,4 @@
 ﻿{
-  // Most of the Coubs has additional metadata called Segments. Should the segments be downloaded too? 
-  // Download time will be significantly increased.
-  // Allowed values: true / false
-  // Default: false
-  "DownloadSegments": false,
-  
   // Number of coub looping
   // Coub video will be looped N times or until audio ends
   // Allowed values: Any positive number (1, 2, 3, 4...)
